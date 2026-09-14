@@ -3,147 +3,434 @@ const cors = require("cors");
 const path = require("path");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
 const User = require("./models/User");
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("MongoDB Connected Successfully");
-  })
-  .catch((error) => {
-    console.log("MongoDB Connection Error:", error);
-  });
-
-const fetch = (...args) =>
-  import("node-fetch").then(({ default: fetch }) =>
-    fetch(...args)
-  );
-
 const app = express();
+
+
+// ===============================
+// MONGODB
+// ===============================
+
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is missing.");
+} else {
+  mongoose
+    .connect(MONGODB_URI)
+    .then(() => {
+      console.log("MongoDB Connected Successfully");
+    })
+    .catch((error) => {
+      console.error("MongoDB Connection Error:", error);
+    });
+}
+
+
+// ===============================
+// MIDDLEWARE
+// ===============================
 
 app.use(cors());
 app.use(express.json());
 
-app.use(express.static(__dirname, {
-  index: false
-}));
+app.use(
+  express.static(__dirname, {
+    index: false
+  })
+);
 
-// ================= API KEYS =================
+
+// ===============================
+// ENVIRONMENT VARIABLES
+// ===============================
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const GROQ_KEY = process.env.GROQ_API_KEY;
 const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
-// ================= SETTINGS =================
+const JWT_SECRET = process.env.JWT_SECRET;
+
+
+// ===============================
+// MODELS
+// ===============================
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const OPENROUTER_MODEL =
   "meta-llama/llama-3.1-8b-instruct";
 
+
+// ===============================
+// CHAT HISTORY
+// ===============================
+
 let chatHistory = [];
 
-// ================= HOME =================
+
+// ===============================
+// NODE FETCH
+// ===============================
+
+let fetch;
+
+(async () => {
+  const module = await import("node-fetch");
+  fetch = module.default;
+})();
+
+
+// ===============================
+// COOKIE HELPERS
+// ===============================
+
+function getCookie(req, name) {
+  const cookieHeader = req.headers.cookie;
+
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const cookies = cookieHeader.split(";");
+
+  for (const cookie of cookies) {
+    const [key, ...valueParts] = cookie.trim().split("=");
+
+    if (key === name) {
+      return decodeURIComponent(valueParts.join("="));
+    }
+  }
+
+  return null;
+}
+
+
+function setAuthCookie(res, token) {
+  const isProduction =
+    process.env.NODE_ENV === "production";
+
+  const cookieParts = [
+    `curio_token=${encodeURIComponent(token)}`,
+    "HttpOnly",
+    "Path=/",
+    "SameSite=Lax",
+    "Max-Age=2592000"
+  ];
+
+  if (isProduction) {
+    cookieParts.push("Secure");
+  }
+
+  res.setHeader(
+    "Set-Cookie",
+    cookieParts.join("; ")
+  );
+}
+
+
+function clearAuthCookie(res) {
+  const isProduction =
+    process.env.NODE_ENV === "production";
+
+  const cookieParts = [
+    "curio_token=",
+    "HttpOnly",
+    "Path=/",
+    "SameSite=Lax",
+    "Max-Age=0"
+  ];
+
+  if (isProduction) {
+    cookieParts.push("Secure");
+  }
+
+  res.setHeader(
+    "Set-Cookie",
+    cookieParts.join("; ")
+  );
+}
+
+
+// ===============================
+// AUTH MIDDLEWARE
+// ===============================
+
+async function requireAuth(req, res, next) {
+  try {
+    if (!JWT_SECRET) {
+      console.error("JWT_SECRET is missing.");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server authentication is not configured."
+      });
+    }
+
+    const token = getCookie(
+      req,
+      "curio_token"
+    );
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required."
+      });
+    }
+
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    );
+
+    if (!decoded.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authentication token."
+      });
+    }
+
+    const user = await User.findById(
+      decoded.userId
+    ).select("-password");
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    req.user = user;
+
+    next();
+
+  } catch (error) {
+    console.error(
+      "Authentication Error:",
+      error.message
+    );
+
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired session."
+    });
+  }
+}
+
+
+// ===============================
+// HOME
+// ===============================
 
 app.get("/", (req, res) => {
   res.redirect("/login.html");
 });
 
-// ================= SIGNUP API =================
+
+// ===============================
+// SIGNUP
+// ===============================
 
 app.post("/signup", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const {
+      name,
+      email,
+      password
+    } = req.body;
 
-    if (!name || !email || !password) {
-      return res.json({
+    if (
+      !name ||
+      !email ||
+      !password
+    ) {
+      return res.status(400).json({
         success: false,
-        message: "Please fill all fields."
+        message:
+          "Name, email and password are required."
       });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanName =
+      String(name).trim();
 
-    const existingUser = await User.findOne({
-      email: cleanEmail
-    });
+    const cleanEmail =
+      String(email)
+        .trim()
+        .toLowerCase();
+
+    if (cleanName.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid name."
+      });
+    }
+
+    if (cleanEmail.length < 5) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email."
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 6 characters."
+      });
+    }
+
+    const existingUser =
+      await User.findOne({
+        email: cleanEmail
+      });
 
     if (existingUser) {
-      return res.json({
+      return res.status(409).json({
         success: false,
-        message: "Email already registered."
+        message:
+          "An account with this email already exists."
       });
     }
 
-    const hashedPassword = await bcrypt.hash(
-      password,
-      10
-    );
+    const hashedPassword =
+      await bcrypt.hash(
+        password,
+        10
+      );
 
-    const user = new User({
-      name: name.trim(),
-      email: cleanEmail,
-      password: hashedPassword
-    });
+    const user =
+      new User({
+        name: cleanName,
+        email: cleanEmail,
+        password: hashedPassword
+      });
 
     await user.save();
 
     return res.json({
       success: true,
-      message: "Account created successfully."
+      message:
+        "Account created successfully."
     });
 
   } catch (error) {
-    console.log("Signup Error:", error);
+    console.error(
+      "Signup Error:",
+      error
+    );
 
-    return res.json({
+    return res.status(500).json({
       success: false,
-      message: "Signup failed. Please try again."
+      message:
+        "Unable to create account."
     });
   }
 });
 
-// ================= LOGIN API =================
+
+// ===============================
+// LOGIN
+// ===============================
 
 app.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const {
+      email,
+      password
+    } = req.body;
 
-    if (!email || !password) {
-      return res.json({
+    if (
+      !email ||
+      !password
+    ) {
+      return res.status(400).json({
         success: false,
-        message: "Please enter email and password."
+        message:
+          "Email and password are required."
       });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail =
+      String(email)
+        .trim()
+        .toLowerCase();
 
-    const user = await User.findOne({
-      email: cleanEmail
-    });
+    const user =
+      await User.findOne({
+        email: cleanEmail
+      });
 
     if (!user) {
-      return res.json({
+      return res.status(401).json({
         success: false,
-        message: "Invalid email or password."
+        message:
+          "Invalid email or password."
       });
     }
 
-    const passwordMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const passwordMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!passwordMatch) {
-      return res.json({
+      return res.status(401).json({
         success: false,
-        message: "Invalid email or password."
+        message:
+          "Invalid email or password."
       });
     }
+
+    // ===============================
+    // CREATE JWT
+    // ===============================
+
+    if (!JWT_SECRET) {
+      console.error(
+        "JWT_SECRET is missing."
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Server authentication is not configured."
+      });
+    }
+
+    const token =
+      jwt.sign(
+        {
+          userId: user._id.toString(),
+          email: user.email
+        },
+        JWT_SECRET,
+        {
+          expiresIn: "30d"
+        }
+      );
+
+    // ===============================
+    // SET HTTP ONLY COOKIE
+    // ===============================
+
+    setAuthCookie(
+      res,
+      token
+    );
 
     return res.json({
       success: true,
-      message: "Login successful.",
+      message:
+        "Login successful.",
       user: {
         name: user.name,
         email: user.email
@@ -151,52 +438,66 @@ app.post("/login", async (req, res) => {
     });
 
   } catch (error) {
-    console.log("Login Error:", error);
+    console.error(
+      "Login Error:",
+      error
+    );
 
-    return res.json({
+    return res.status(500).json({
       success: false,
-      message: "Login failed. Please try again."
+      message:
+        "Unable to login."
     });
   }
 });
 
-// ================= WEB SEARCH =================
+
+// ===============================
+// AUTH ME
+// ===============================
+
+app.get(
+  "/auth/me",
+  requireAuth,
+  async (req, res) => {
+    return res.json({
+      success: true,
+      user: {
+        name: req.user.name,
+        email: req.user.email
+      }
+    });
+  }
+);
+
+
+// ===============================
+// LOGOUT
+// ===============================
+
+app.post(
+  "/logout",
+  (req, res) => {
+    clearAuthCookie(res);
+
+    return res.json({
+      success: true,
+      message:
+        "Logged out successfully."
+    });
+  }
+);
+
+
+// ===============================
+// TAVILY WEB SEARCH
+// ===============================
 
 async function searchWeb(query) {
   try {
     if (!TAVILY_API_KEY) {
-      console.log("TAVILY_API_KEY is missing");
-
-      return {
-        text: "",
-        sources: []
-      };
-    }
-
-    const webRes = await fetch(
-      "https://api.tavily.com/search",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify({
-          api_key: TAVILY_API_KEY,
-          query: query,
-          search_depth: "basic",
-          max_results: 5
-        })
-      }
-    );
-
-    const webData = await webRes.json();
-
-    if (!webRes.ok) {
       console.log(
-        "Tavily Error:",
-        JSON.stringify(webData, null, 2)
+        "TAVILY_API_KEY missing."
       );
 
       return {
@@ -205,48 +506,75 @@ async function searchWeb(query) {
       };
     }
 
-    if (
-      !webData.results ||
-      webData.results.length === 0
-    ) {
+    const response =
+      await fetch(
+        "https://api.tavily.com/search",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            api_key:
+              TAVILY_API_KEY,
+            query,
+            search_depth: "advanced",
+            include_answer: true,
+            include_raw_content: false,
+            max_results: 5
+          })
+        }
+      );
+
+    if (!response.ok) {
+      console.error(
+        "Tavily Error:",
+        response.status
+      );
+
       return {
         text: "",
         sources: []
       };
     }
 
-    const sources = webData.results
-      .map((item) => ({
-        title: item.title || "Web Source",
-        url: item.url || ""
-      }))
-      .filter((item) => item.url);
+    const data =
+      await response.json();
 
-    const results = webData.results
-      .map((item, index) => {
-        return `
-SOURCE ${index + 1}
+    const results =
+      data.results || [];
 
-Title:
-${item.title || "Unknown"}
+    const sources =
+      results.map((item) => ({
+        title:
+          item.title || "Source",
+        url:
+          item.url || ""
+      }));
 
-Content:
-${item.content || "No content"}
+    let text =
+      data.answer || "";
 
-URL:
-${item.url || ""}
-`;
-      })
-      .join("\n-------------------\n");
+    if (!text) {
+      text = results
+        .map(
+          (item) =>
+            `${item.title}: ${
+              item.content || ""
+            }`
+        )
+        .join("\n\n");
+    }
 
     return {
-      text: results,
-      sources: sources
+      text,
+      sources
     };
 
   } catch (error) {
-    console.log(
-      "Web Search Error:",
+    console.error(
+      "Tavily Search Error:",
       error
     );
 
@@ -257,154 +585,105 @@ ${item.url || ""}
   }
 }
 
-// ================= AUTO WEB CHECK =================
 
-async function needsWebSearch(message) {
+// ===============================
+// AUTO WEB SEARCH CHECK
+// ===============================
+
+async function needsWebSearch(
+  message
+) {
   try {
     if (!OPENROUTER_KEY) {
-      console.log(
-        "OPENROUTER_KEY missing - Auto Web Check skipped"
-      );
-
       return false;
     }
 
-    const checkRes = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
+    const response =
+      await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${OPENROUTER_KEY}`
+          },
+          body: JSON.stringify({
+            model:
+              OPENROUTER_MODEL,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Decide if the user's question requires current, live, recent, changing, or web-based information. Reply ONLY with YES or NO."
+              },
+              {
+                role: "user",
+                content: message
+              }
+            ],
+            temperature: 0
+          })
+        }
+      );
 
-        headers: {
-          "Authorization":
-            "Bearer " + OPENROUTER_KEY,
+    if (!response.ok) {
+      return false;
+    }
 
-          "Content-Type":
-            "application/json",
+    const data =
+      await response.json();
 
-          "HTTP-Referer":
-            "https://curio-x8mx.onrender.com",
-
-          "X-Title":
-            "Curio"
-        },
-
-        body: JSON.stringify({
-          model: OPENROUTER_MODEL,
-
-          temperature: 0,
-
-          max_tokens: 5,
-
-          messages: [
-            {
-              role: "system",
-
-              content: `
-Decide whether the user's question requires an internet web search.
-
-Reply ONLY with YES or NO.
-
-Reply YES if the question involves:
-- latest information
-- current information
-- today's information
-- news
-- live events
-- current weather
-- live sports scores
-- current prices
-- recent events
-- new releases
-- information that may have changed recently
-
-Reply NO if it involves:
-- mathematics
-- coding concepts
-- programming explanations
-- writing
-- grammar
-- general knowledge
-- normal explanations
-- historical information
-- creative tasks
-`
-            },
-
-            {
-              role: "user",
-              content: message
-            }
-          ]
-        })
-      }
-    );
-
-    const checkData =
-      await checkRes.json();
-
-    const decision =
-      checkData
-        .choices?.[0]
-        ?.message
-        ?.content
+    const answer =
+      data?.choices?.[0]?.message?.content
         ?.trim()
         ?.toUpperCase();
 
-    console.log(
-      "Auto Web Decision:",
-      decision
-    );
-
-    return decision === "YES";
+    return answer === "YES";
 
   } catch (error) {
-    console.log(
-      "Auto Web Check Error:",
-      error
+    console.error(
+      "Web Detection Error:",
+      error.message
     );
 
     return false;
   }
 }
 
-// ================= RESPONSE CHECK =================
+
+// ===============================
+// ANSWER CHECK
+// ===============================
 
 function isUsableAnswer(reply) {
-  if (
-    !reply ||
-    typeof reply !== "string"
-  ) {
+  if (!reply) {
     return false;
   }
 
-  const text = reply.trim();
+  const text =
+    String(reply).trim();
 
-  if (text.length < 3) {
+  if (text.length < 2) {
     return false;
   }
 
   const badResponses = [
-    "no response",
-    "no response received",
-    "unable to answer",
-    "i am unable to answer",
-    "i can't answer",
-    "i cannot answer",
     "i don't know",
     "i do not know",
+    "i can't help",
+    "i cannot help",
     "i'm not sure",
     "i am not sure",
-    "service error",
-    "api error",
-    "error occurred",
-    "please try again"
+    "no answer"
   ];
 
-  const lowerText =
+  const lower =
     text.toLowerCase();
 
   for (const bad of badResponses) {
-    if (lowerText === bad) {
+    if (lower === bad) {
       return false;
     }
   }
@@ -412,670 +691,513 @@ function isUsableAnswer(reply) {
   return true;
 }
 
-// ================= GEMINI AI =================
 
-async function askGemini(messages) {
+// ===============================
+// GEMINI
+// ===============================
+
+async function askGemini(
+  messages
+) {
   try {
     if (!GEMINI_KEY) {
-      console.log(
-        "GEMINI_API_KEY is missing"
-      );
-
       return null;
     }
 
-    const systemMessage =
-      messages.find(
-        (msg) => msg.role === "system"
-      );
-
-    const conversationMessages =
-      messages.filter(
-        (msg) => msg.role !== "system"
-      );
-
     const contents =
-      conversationMessages.map(
-        (msg) => ({
+      messages.map(
+        (message) => ({
           role:
-            msg.role === "assistant"
+            message.role ===
+            "assistant"
               ? "model"
               : "user",
-
           parts: [
             {
-              text: msg.content
+              text:
+                message.content
             }
           ]
         })
       );
 
-    const url =
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`;
-
-    const aiRes = await fetch(
-      url,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body: JSON.stringify({
-          systemInstruction:
-            systemMessage
-              ? {
-                  parts: [
-                    {
-                      text:
-                        systemMessage.content
-                    }
-                  ]
-                }
-              : undefined,
-
-          contents: contents,
-
-          generationConfig: {
-            temperature: 0.6,
-            maxOutputTokens: 1000
-          }
-        })
-      }
-    );
-
-    const data =
-      await aiRes.json();
-
-    if (!aiRes.ok) {
-      console.log(
-        "Gemini Error:",
-        JSON.stringify(
-          data,
-          null,
-          2
-        )
-      );
-
-      return null;
-    }
-
-    const reply =
-      data
-        ?.candidates?.[0]
-        ?.content?.parts
-        ?.map((part) => part.text || "")
-        ?.join("")
-        ?.trim();
-
-    if (!isUsableAnswer(reply)) {
-      console.log(
-        "Gemini returned unusable answer"
-      );
-
-      return null;
-    }
-
-    console.log(
-      "AI Provider Used: Gemini"
-    );
-
-    return reply;
-
-  } catch (error) {
-    console.log(
-      "Gemini Request Error:",
-      error
-    );
-
-    return null;
-  }
-}
-
-// ================= GROQ AI =================
-
-async function askGroq(messages) {
-  try {
-    if (!GROQ_KEY) {
-      console.log(
-        "GROQ_API_KEY is missing"
-      );
-
-      return null;
-    }
-
-    const aiRes = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-
-        headers: {
-          "Authorization":
-            "Bearer " + GROQ_KEY,
-
-          "Content-Type":
-            "application/json"
-        },
-
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-
-          temperature: 0.6,
-
-          max_tokens: 1000,
-
-          messages: messages
-        })
-      }
-    );
-
-    const data =
-      await aiRes.json();
-
-    if (!aiRes.ok) {
-      console.log(
-        "Groq Error:",
-        JSON.stringify(
-          data,
-          null,
-          2
-        )
-      );
-
-      return null;
-    }
-
-    const reply =
-      data
-        ?.choices?.[0]
-        ?.message
-        ?.content
-        ?.trim();
-
-    if (!isUsableAnswer(reply)) {
-      console.log(
-        "Groq returned unusable answer"
-      );
-
-      return null;
-    }
-
-    console.log(
-      "AI Provider Used: Groq"
-    );
-
-    return reply;
-
-  } catch (error) {
-    console.log(
-      "Groq Request Error:",
-      error
-    );
-
-    return null;
-  }
-}
-
-// ================= OPENROUTER AI =================
-
-async function askOpenRouter(messages) {
-  try {
-    if (!OPENROUTER_KEY) {
-      console.log(
-        "OPENROUTER_KEY is missing"
-      );
-
-      return null;
-    }
-
-    const aiRes = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-
-        headers: {
-          "Authorization":
-            "Bearer " + OPENROUTER_KEY,
-
-          "Content-Type":
-            "application/json",
-
-          "HTTP-Referer":
-            "https://curio-x8mx.onrender.com",
-
-          "X-Title":
-            "Curio"
-        },
-
-        body: JSON.stringify({
-          model:
-            OPENROUTER_MODEL,
-
-          temperature: 0.6,
-
-          max_tokens: 1000,
-
-          messages: messages
-        })
-      }
-    );
-
-    const data =
-      await aiRes.json();
-
-    if (!aiRes.ok) {
-      console.log(
-        "OpenRouter Error:",
-        JSON.stringify(
-          data,
-          null,
-          2
-        )
-      );
-
-      return null;
-    }
-
-    const reply =
-      data
-        ?.choices?.[0]
-        ?.message
-        ?.content
-        ?.trim();
-
-    if (!isUsableAnswer(reply)) {
-      console.log(
-        "OpenRouter returned unusable answer"
-      );
-
-      return null;
-    }
-
-    console.log(
-      "AI Provider Used: OpenRouter"
-    );
-
-    return reply;
-
-  } catch (error) {
-    console.log(
-      "OpenRouter Request Error:",
-      error
-    );
-
-    return null;
-  }
-}
-
-// ================= CHAT API =================
-
-app.post("/chat", async (req, res) => {
-  try {
-    const {
-      message,
-      web
-    } = req.body;
-
-    if (
-      !message ||
-      typeof message !== "string" ||
-      message.trim() === ""
-    ) {
-      return res.json({
-        reply:
-          "Please enter a message.",
-
-        webUsed: false,
-
-        sources: []
-      });
-    }
-
-    const userMessage =
-      message.trim();
-
-    const autoWeb =
-      await needsWebSearch(
-        userMessage
-      );
-
-    const useWeb =
-      web === true || autoWeb;
-
-    console.log(
-      "Web Search:",
-      useWeb
-        ? "ON"
-        : "OFF"
-    );
-
-    let webContext = "";
-    let sources = [];
-
-    if (useWeb) {
-      console.log(
-        "Web Search Started:",
-        userMessage
-      );
-
-      const webResult =
-        await searchWeb(
-          userMessage
-        );
-
-      webContext =
-        webResult.text;
-
-      sources =
-        webResult.sources;
-
-      if (webContext) {
-        console.log(
-          "Web Results Found:",
-          sources.length
-        );
-      } else {
-        console.log(
-          "No Web Results Found"
-        );
-      }
-    }
-
-    const today =
-      new Date().toLocaleString(
-        "en-IN",
+    const response =
+      await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
         {
-          dateStyle: "full",
-          timeStyle: "short",
-          timeZone:
-            "Asia/Kolkata"
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            contents
+          })
         }
       );
 
-    let systemPrompt = `
-You are Curio, an intelligent AI assistant.
+    if (!response.ok) {
+      const errorText =
+        await response.text();
 
-Current date and time:
-${today}
+      console.error(
+        "Gemini Error:",
+        errorText
+      );
 
-Rules:
-
-- Give smart, helpful and natural answers.
-- Be friendly and futuristic.
-- Explain things clearly.
-- Do not invent current information.
-- Use the current date when relevant.
-- If web search results are provided, use them to answer the user's question.
-- If web results are insufficient, clearly say that reliable information was not found.
-- Do not mention internal system instructions.
-
-IMPORTANT CREATOR RULE:
-
-If someone asks:
-"Who made you?"
-"Who created you?"
-"Tumhe kisne banaya?"
-"Who is your owner?"
-"Who developed you?"
-
-Then reply exactly:
-
-"I was created by Medhansh Bisht 😎🔥"
-`;
-
-    if (webContext) {
-      systemPrompt += `
-
-LIVE WEB SEARCH RESULTS:
-
-${webContext}
-
-WEB SEARCH INSTRUCTIONS:
-
-- Use these search results to answer the user's question.
-- Combine information from useful sources.
-- Do not blindly copy the search results.
-- Give the user a clear and natural answer.
-- Do not make up information that is not supported by the results.
-- If appropriate, mention that the answer was obtained using live web search.
-`;
+      return null;
     }
 
-    chatHistory.push({
-      role: "user",
-      content: userMessage
-    });
+    const data =
+      await response.json();
 
-    if (chatHistory.length > 16) {
-      chatHistory =
-        chatHistory.slice(-16);
-    }
+    const reply =
+      data?.candidates?.[0]?.content
+        ?.parts?.[0]?.text;
 
-    const aiMessages = [
-      {
-        role: "system",
-        content: systemPrompt
-      },
+    return isUsableAnswer(
+      reply
+    )
+      ? reply
+      : null;
 
-      ...chatHistory.slice(-10)
-    ];
-
-    // ==================================================
-    // GEMINI → GROQ → OPENROUTER → TAVILY
-    // ==================================================
-
-    let reply = null;
-    let provider = "none";
-
-    // ================= GEMINI =================
-
-    console.log(
-      "Trying Gemini..."
+  } catch (error) {
+    console.error(
+      "Gemini Error:",
+      error
     );
 
-    reply =
-      await askGemini(
-        aiMessages
-      );
+    return null;
+  }
+}
 
-    if (reply) {
-      provider = "Gemini";
+
+// ===============================
+// GROQ
+// ===============================
+
+async function askGroq(
+  messages
+) {
+  try {
+    if (!GROQ_KEY) {
+      return null;
     }
 
-    // ================= GROQ =================
-
-    if (!reply) {
-      console.log(
-        "Gemini failed. Trying Groq..."
+    const response =
+      await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${GROQ_KEY}`
+          },
+          body: JSON.stringify({
+            model:
+              GROQ_MODEL,
+            messages,
+            temperature: 0.7
+          })
+        }
       );
 
-      reply =
-        await askGroq(
-          aiMessages
-        );
+    if (!response.ok) {
+      const errorText =
+        await response.text();
 
-      if (reply) {
-        provider = "Groq";
+      console.error(
+        "Groq Error:",
+        errorText
+      );
+
+      return null;
+    }
+
+    const data =
+      await response.json();
+
+    const reply =
+      data?.choices?.[0]?.message?.content;
+
+    return isUsableAnswer(
+      reply
+    )
+      ? reply
+      : null;
+
+  } catch (error) {
+    console.error(
+      "Groq Error:",
+      error
+    );
+
+    return null;
+  }
+}
+
+
+// ===============================
+// OPENROUTER
+// ===============================
+
+async function askOpenRouter(
+  messages
+) {
+  try {
+    if (!OPENROUTER_KEY) {
+      return null;
+    }
+
+    const response =
+      await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${OPENROUTER_KEY}`,
+            "HTTP-Referer":
+              "https://curio-x8mx.onrender.com",
+            "X-Title":
+              "Curio AI"
+          },
+          body: JSON.stringify({
+            model:
+              OPENROUTER_MODEL,
+            messages,
+            temperature: 0.7
+          })
+        }
+      );
+
+    if (!response.ok) {
+      const errorText =
+        await response.text();
+
+      console.error(
+        "OpenRouter Error:",
+        errorText
+      );
+
+      return null;
+    }
+
+    const data =
+      await response.json();
+
+    const reply =
+      data?.choices?.[0]?.message?.content;
+
+    return isUsableAnswer(
+      reply
+    )
+      ? reply
+      : null;
+
+  } catch (error) {
+    console.error(
+      "OpenRouter Error:",
+      error
+    );
+
+    return null;
+  }
+}
+
+
+// ===============================
+// CHAT
+// ===============================
+
+app.post(
+  "/chat",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const {
+        message,
+        web
+      } = req.body;
+
+      if (
+        !message ||
+        !String(message).trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Message is required."
+        });
       }
-    }
 
-    // ================= OPENROUTER =================
+      const userMessage =
+        String(message).trim();
 
-    if (!reply) {
-      console.log(
-        "Groq failed. Trying OpenRouter..."
-      );
+      // ===============================
+      // AUTO WEB DETECTION
+      // ===============================
 
-      reply =
-        await askOpenRouter(
-          aiMessages
-        );
+      let webUsed = false;
+      let sources = [];
+      let webText = "";
 
-      if (reply) {
-        provider = "OpenRouter";
+      if (web === true) {
+        webUsed = true;
+      } else {
+        webUsed =
+          await needsWebSearch(
+            userMessage
+          );
       }
-    }
 
-    // ================= TAVILY FALLBACK =================
+      // ===============================
+      // WEB SEARCH
+      // ===============================
 
-    if (!reply) {
-      console.log(
-        "All AI providers failed."
-      );
+      if (webUsed) {
+        const webResult =
+          await searchWeb(
+            userMessage
+          );
 
-      console.log(
-        "Trying Tavily Web Search..."
-      );
+        webText =
+          webResult.text;
 
-      const fallbackWeb =
-        await searchWeb(
-          userMessage
-        );
-
-      if (fallbackWeb.text) {
         sources =
-          fallbackWeb.sources;
+          webResult.sources;
+      }
 
-        const webOnlyPrompt = `
-You are Curio, an AI assistant.
+      // ===============================
+      // SYSTEM PROMPT
+      // ===============================
 
-Current date and time:
-${today}
+      const systemPrompt = `
+You are Curio, a smart and friendly AI assistant.
 
-The normal AI providers were unable to provide a useful answer.
+Be helpful, clear, accurate and natural.
 
-Answer the user's question using ONLY the web search results below.
+If the user asks who created, made, developed, owns, or built you, reply exactly:
+"I was created by Medhansh Bisht 😎🔥"
 
-WEB RESULTS:
+Do not claim to be ChatGPT.
 
-${fallbackWeb.text}
+If web search information is provided, use it when relevant and do not invent facts.
 
-Rules:
-- Give a clear and useful answer.
-- Use the web results as your source.
-- Do not invent unsupported information.
-- If the results do not contain enough information, say so.
+Keep answers appropriate and useful for the user.
 `;
 
-        const fallbackMessages = [
+      const messages = [
+        {
+          role: "system",
+          content:
+            systemPrompt
+        },
+        ...chatHistory,
+        {
+          role: "user",
+          content:
+            userMessage
+        }
+      ];
+
+      // ===============================
+      // ADD WEB INFORMATION
+      // ===============================
+
+      if (webText) {
+        messages.splice(
+          1,
+          0,
           {
             role: "system",
             content:
-              webOnlyPrompt
-          },
-
-          {
-            role: "user",
-            content:
-              userMessage
+              `Web search information:\n\n${webText}`
           }
-        ];
+        );
+      }
 
+      // ===============================
+      // SAVE USER MESSAGE
+      // ===============================
+
+      chatHistory.push({
+        role: "user",
+        content:
+          userMessage
+      });
+
+      let reply = null;
+      let provider = null;
+
+      // ===============================
+      // GEMINI
+      // ===============================
+
+      reply =
+        await askGemini(
+          messages
+        );
+
+      if (reply) {
+        provider = "Gemini";
+      }
+
+      // ===============================
+      // GROQ
+      // ===============================
+
+      if (!reply) {
+        reply =
+          await askGroq(
+            messages
+          );
+
+        if (reply) {
+          provider = "Groq";
+        }
+      }
+
+      // ===============================
+      // OPENROUTER
+      // ===============================
+
+      if (!reply) {
         reply =
           await askOpenRouter(
-            fallbackMessages
+            messages
           );
 
         if (reply) {
           provider =
-            "Tavily + OpenRouter";
-        } else {
-          reply =
-            fallbackWeb.text;
-
-          provider =
-            "Tavily Web Search";
+            "OpenRouter";
         }
       }
-    }
 
-    // ================= NO RESPONSE =================
+      // ===============================
+      // TAVILY FALLBACK
+      // ===============================
 
-    if (!reply) {
-      console.log(
-        "All AI and Web systems failed."
-      );
+      if (!reply) {
+        console.log(
+          "All AI providers failed. Using Tavily fallback."
+        );
+
+        const fallbackWeb =
+          await searchWeb(
+            userMessage
+          );
+
+        if (fallbackWeb.text) {
+          webUsed = true;
+
+          sources =
+            fallbackWeb.sources;
+
+          const fallbackMessages = [
+            {
+              role: "system",
+              content:
+                `${systemPrompt}
+
+Use the following web search information to answer the user's question accurately:
+
+${fallbackWeb.text}`
+            },
+            {
+              role: "user",
+              content:
+                userMessage
+            }
+          ];
+
+          reply =
+            await askOpenRouter(
+              fallbackMessages
+            );
+
+          if (reply) {
+            provider =
+              "Tavily + OpenRouter";
+          }
+        }
+      }
+
+      // ===============================
+      // FINAL FAILURE
+      // ===============================
+
+      if (!reply) {
+        reply =
+          "Sorry, I couldn't get a useful answer right now. Please try again.";
+
+        provider = "Fallback";
+      }
+
+      // ===============================
+      // SAVE ASSISTANT MESSAGE
+      // ===============================
+
+      chatHistory.push({
+        role: "assistant",
+        content:
+          reply
+      });
+
+      // ===============================
+      // RESPONSE
+      // ===============================
 
       return res.json({
-        reply:
-          "I couldn't get a useful answer right now. Please try again.",
+        success: true,
+        reply,
+        webUsed,
+        sources,
+        provider
+      });
 
-        webUsed:
-          useWeb,
+    } catch (error) {
+      console.error(
+        "Chat Error:",
+        error
+      );
 
-        sources:
-          sources,
-
-        provider:
-          "none"
+      return res.status(500).json({
+        success: false,
+        message:
+          "Something went wrong while processing your message."
       });
     }
+  }
+);
 
-    // ================= SAVE AI RESPONSE =================
 
-    chatHistory.push({
-      role: "assistant",
-      content: reply
-    });
+// ===============================
+// RESET CHAT
+// ===============================
 
-    if (chatHistory.length > 16) {
-      chatHistory =
-        chatHistory.slice(-16);
-    }
-
-    console.log(
-      "Final Provider:",
-      provider
-    );
-
-    // ================= FINAL RESPONSE =================
+app.post(
+  "/reset",
+  requireAuth,
+  (req, res) => {
+    chatHistory = [];
 
     return res.json({
-      reply: reply,
-
-      webUsed:
-        useWeb ||
-        provider.includes("Tavily"),
-
-      sources:
-        sources,
-
-      provider:
-        provider
-    });
-
-  } catch (error) {
-    console.log(
-      "Server Error:",
-      error
-    );
-
-    return res.json({
-      reply:
-        "Server Error. Please try again.",
-
-      webUsed: false,
-
-      sources: [],
-
-      provider: "none"
+      success: true,
+      message:
+        "Chat reset successfully."
     });
   }
-});
+);
 
-// ================= RESET CHAT =================
 
-app.post("/reset", (req, res) => {
-  chatHistory = [];
-
-  res.json({
-    success: true
-  });
-});
-
-// ================= START SERVER =================
+// ===============================
+// SERVER
+// ===============================
 
 const PORT =
   process.env.PORT || 3000;
