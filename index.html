@@ -809,18 +809,12 @@ menuPop 0.18s ease;
 }
 
 
-/* SHOW MENU */
-
 .plus-menu.show{
 
 display:flex;
 
 }
 
-
-/* ================================================= */
-/* ================= MENU ANIMATION ================ */
-/* ================================================= */
 
 @keyframes menuPop{
 
@@ -1174,8 +1168,6 @@ border-radius:14px;
 }
 
 
-/* MOBILE INPUT */
-
 .input-area{
 
 padding:
@@ -1456,8 +1448,6 @@ id="history"
 <div class="main">
 
 
-<!-- ================= HERO ================= -->
-
 <div class="hero">
 
 <h1>
@@ -1470,8 +1460,6 @@ Your Coolest Smart AI Bot
 
 </div>
 
-
-<!-- ================= FEATURES ================= -->
 
 <div class="features">
 
@@ -1494,29 +1482,17 @@ Your Coolest Smart AI Bot
 </div>
 
 
-<!-- ================================================= -->
-<!-- ================= CHAT CONTAINER ================ -->
-<!-- ================================================= -->
-
 <div
 class="chat-container start-screen"
 id="chatContainer"
 >
 
 
-<!-- ================= CHATBOX ================= -->
-
 <div id="chatbox"></div>
 
 
-<!-- ================================================= -->
-<!-- ================= PREMIUM INPUT ================= -->
-<!-- ================================================= -->
-
 <div class="input-area">
 
-
-<!-- ================= MIC ================= -->
 
 <button
 class="mic"
@@ -1527,15 +1503,11 @@ title="Voice Input"
 </button>
 
 
-<!-- ================= INPUT BOX ================= -->
-
 <div
 class="input-box"
 id="inputBox"
 >
 
-
-<!-- ================= PLUS ================= -->
 
 <button
 class="plus"
@@ -1547,8 +1519,6 @@ title="More options"
 </button>
 
 
-<!-- ================= TEXT INPUT ================= -->
-
 <input
 id="input"
 placeholder="Message Curio..."
@@ -1559,8 +1529,6 @@ autocomplete="off"
 </div>
 
 
-<!-- ================= SEND ================= -->
-
 <button
 class="send"
 onclick="send()"
@@ -1569,10 +1537,6 @@ title="Send"
 ➤
 </button>
 
-
-<!-- ================================================= -->
-<!-- ==================== PLUS MENU ================== -->
-<!-- ================================================= -->
 
 <div
 class="plus-menu"
@@ -1608,67 +1572,6 @@ onclick="toggleWeb()"
 
 
 <script>
-
-
-/* ================================================= */
-/* ================= AUTH CHECK ==================== */
-/* ================================================= */
-
-async function checkAuth(){
-
-try{
-
-const response =
-await fetch(
-"/auth/me",
-{
-method:"GET",
-credentials:"same-origin"
-}
-);
-
-if(!response.ok){
-
-window.location.replace(
-"/login.html"
-);
-
-return;
-
-}
-
-const data =
-await response.json();
-
-if(!data.success){
-
-window.location.replace(
-"/login.html"
-);
-
-}
-
-}catch(error){
-
-console.error(
-"Auth Check Error:",
-error
-);
-
-window.location.replace(
-"/login.html"
-);
-
-}
-
-}
-
-
-/* ================================================= */
-/* ================= CHECK LOGIN ==================== */
-/* ================================================= */
-
-checkAuth();
 
 
 /* ================================================= */
@@ -2332,14 +2235,10 @@ return;
 }
 
 
-/* START CHAT */
-
 startChatUI();
 
 closePlusMenu();
 
-
-/* CREATE RECOGNITION */
 
 const recognition =
 new SpeechRecognition();
@@ -2361,8 +2260,6 @@ recognition.maxAlternatives =
 1;
 
 
-/* LISTENING EFFECT */
-
 inputBox
 .classList
 .add(
@@ -2370,12 +2267,8 @@ inputBox
 );
 
 
-/* START */
-
 recognition.start();
 
-
-/* RESULT */
 
 recognition.onresult =
 (e)=>{
@@ -2391,8 +2284,6 @@ text
 };
 
 
-/* END */
-
 recognition.onend =
 ()=>{
 
@@ -2404,8 +2295,6 @@ inputBox
 
 };
 
-
-/* ERROR */
 
 recognition.onerror =
 ()=>{
