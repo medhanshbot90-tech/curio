@@ -191,27 +191,93 @@ button:disabled{
 
 <script>
 
+// ==================================================
+// CHECK EXISTING LOGIN
+// ==================================================
+
+async function checkExistingLogin(){
+
+    try{
+
+        const response =
+            await fetch(
+                "/auth/me",
+                {
+                    method:"GET",
+                    credentials:"same-origin"
+                }
+            );
+
+        if(
+            response.ok
+        ){
+
+            const data =
+                await response.json();
+
+            if(
+                data.success
+            ){
+
+                window.location.replace(
+                    "/index.html"
+                );
+
+                return;
+            }
+        }
+
+    }catch(error){
+
+        console.log(
+            "Session Check Error:",
+            error
+        );
+    }
+}
+
+
+// Check login immediately
+checkExistingLogin();
+
+
+// ==================================================
+// ELEMENTS
+// ==================================================
+
 const emailInput =
-    document.getElementById("email");
+    document.getElementById(
+        "email"
+    );
 
 const passwordInput =
-    document.getElementById("password");
+    document.getElementById(
+        "password"
+    );
 
 const loginButton =
-    document.getElementById("loginButton");
+    document.getElementById(
+        "loginButton"
+    );
 
 const showPassword =
-    document.getElementById("showPassword");
+    document.getElementById(
+        "showPassword"
+    );
 
+
+// ==================================================
+// SHOW / HIDE PASSWORD
+// ==================================================
 
 showPassword.addEventListener(
     "click",
     () => {
 
-        if (
+        if(
             passwordInput.type ===
             "password"
-        ) {
+        ){
 
             passwordInput.type =
                 "text";
@@ -222,7 +288,7 @@ showPassword.addEventListener(
             showPassword.title =
                 "Hide password";
 
-        } else {
+        }else{
 
             passwordInput.type =
                 "password";
@@ -238,6 +304,10 @@ showPassword.addEventListener(
 );
 
 
+// ==================================================
+// LOGIN
+// ==================================================
+
 loginButton.addEventListener(
     "click",
     async () => {
@@ -249,7 +319,10 @@ loginButton.addEventListener(
             passwordInput.value;
 
 
-        if (!email || !password) {
+        if(
+            !email ||
+            !password
+        ){
 
             alert(
                 "Please enter email and password."
@@ -259,21 +332,25 @@ loginButton.addEventListener(
         }
 
 
-        loginButton.disabled = true;
+        loginButton.disabled =
+            true;
 
         loginButton.textContent =
             "Logging in...";
 
 
-        try {
+        try{
 
             const response =
                 await fetch(
                     "/login",
                     {
-                        method: "POST",
+                        method:"POST",
 
-                        headers: {
+                        credentials:
+                            "same-origin",
+
+                        headers:{
                             "Content-Type":
                                 "application/json"
                         },
@@ -294,23 +371,19 @@ loginButton.addEventListener(
                 await response.json();
 
 
-            if (data.success) {
+            if(
+                data.success
+            ){
 
                 alert(
                     "Login successful! 🎉"
                 );
 
-                /*
-                 * IMPORTANT:
-                 * Do NOT use "/"
-                 * here because "/" opens
-                 * the login page.
-                 */
+                window.location.replace(
+                    "/index.html"
+                );
 
-                window.location.href =
-                    "/index.html";
-
-            } else {
+            }else{
 
                 alert(
                     data.message ||
@@ -319,7 +392,7 @@ loginButton.addEventListener(
             }
 
 
-        } catch (error) {
+        }catch(error){
 
             console.error(
                 "Login Error:",
@@ -330,7 +403,7 @@ loginButton.addEventListener(
                 "Unable to connect to Curio server."
             );
 
-        } finally {
+        }finally{
 
             loginButton.disabled =
                 false;
