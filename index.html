@@ -144,7 +144,7 @@ font-weight:bold;
 
 cursor:pointer;
 
-margin-bottom:16px;
+margin-bottom:10px;
 
 font-size:14px;
 
@@ -160,6 +160,52 @@ translateY(-1px);
 
 box-shadow:
 0 7px 18px rgba(0,255,204,0.18);
+}
+
+
+/* ================================================= */
+/* ===================== LOGOUT ===================== */
+/* ================================================= */
+
+.logout{
+
+width:100%;
+
+padding:10px;
+
+border:none;
+
+border-radius:12px;
+
+background:
+rgba(255,70,90,0.12);
+
+border:
+1px solid rgba(255,70,90,0.22);
+
+color:#ff9aa8;
+
+font-weight:bold;
+
+cursor:pointer;
+
+margin-bottom:16px;
+
+font-size:13px;
+
+transition:
+background 0.2s ease,
+transform 0.2s ease;
+}
+
+.logout:hover{
+
+background:
+rgba(255,70,90,0.20);
+
+transform:
+translateY(-1px);
+
 }
 
 
@@ -1388,6 +1434,13 @@ onclick="newChat()"
 + New Chat
 </button>
 
+<button
+class="logout"
+onclick="logout()"
+>
+🚪 Logout
+</button>
+
 <div
 class="history"
 id="history"
@@ -1555,6 +1608,67 @@ onclick="toggleWeb()"
 
 
 <script>
+
+
+/* ================================================= */
+/* ================= AUTH CHECK ==================== */
+/* ================================================= */
+
+async function checkAuth(){
+
+try{
+
+const response =
+await fetch(
+"/auth/me",
+{
+method:"GET",
+credentials:"same-origin"
+}
+);
+
+if(!response.ok){
+
+window.location.replace(
+"/login.html"
+);
+
+return;
+
+}
+
+const data =
+await response.json();
+
+if(!data.success){
+
+window.location.replace(
+"/login.html"
+);
+
+}
+
+}catch(error){
+
+console.error(
+"Auth Check Error:",
+error
+);
+
+window.location.replace(
+"/login.html"
+);
+
+}
+
+}
+
+
+/* ================================================= */
+/* ================= CHECK LOGIN ==================== */
+/* ================================================= */
+
+checkAuth();
 
 
 /* ================================================= */
@@ -1751,6 +1865,8 @@ await fetch(
 {
 method:"POST",
 
+credentials:"same-origin",
+
 headers:{
 "Content-Type":
 "application/json"
@@ -1770,6 +1886,16 @@ web:webEnabled
 /* ================= CHECK RESPONSE ================= */
 
 if(!res.ok){
+
+if(res.status === 401){
+
+window.location.replace(
+"/login.html"
+);
+
+return;
+
+}
 
 throw new Error(
 "Server response failed"
@@ -2003,16 +2129,78 @@ closePlusMenu();
 
 try{
 
+const response =
 await fetch(
 "/reset",
 {
-method:"POST"
+method:"POST",
+credentials:"same-origin"
 }
 );
+
+if(response.status === 401){
+
+window.location.replace(
+"/login.html"
+);
+
+return;
+
+}
 
 }catch(error){
 
 console.error(error);
+
+}
+
+}
+
+
+/* ================================================= */
+/* ===================== LOGOUT ==================== */
+/* ================================================= */
+
+async function logout(){
+
+try{
+
+const response =
+await fetch(
+"/logout",
+{
+method:"POST",
+credentials:"same-origin"
+}
+);
+
+const data =
+await response.json();
+
+if(data.success){
+
+window.location.replace(
+"/login.html"
+);
+
+}else{
+
+alert(
+"Logout failed. Please try again."
+);
+
+}
+
+}catch(error){
+
+console.error(
+"Logout Error:",
+error
+);
+
+alert(
+"Unable to logout. Please try again."
+);
 
 }
 
@@ -2262,4 +2450,3 @@ closePlusMenu();
 </body>
 
 </html>
-```
