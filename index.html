@@ -1,0 +1,2341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+>
+
+<title>Curio</title>
+
+<style>
+
+/* ================================================= */
+/* ===================== RESET ===================== */
+/* ================================================= */
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+html,
+body{
+width:100%;
+height:100%;
+}
+
+body{
+
+height:100vh;
+
+background:
+linear-gradient(
+135deg,
+#0b0f0c,
+#10241a,
+#1b4332,
+#081c15
+);
+
+overflow:hidden;
+
+color:white;
+}
+
+
+/* ================================================= */
+/* ================= CONTAINER ===================== */
+/* ================================================= */
+
+.container{
+
+display:flex;
+
+height:100vh;
+
+width:100%;
+}
+
+
+/* ================================================= */
+/* =================== SIDEBAR ===================== */
+/* ================================================= */
+
+.sidebar{
+
+width:220px;
+
+flex-shrink:0;
+
+background:
+rgba(0,0,0,0.35);
+
+backdrop-filter:blur(10px);
+
+padding:12px;
+
+border-right:
+1px solid rgba(255,255,255,0.08);
+}
+
+
+/* ================================================= */
+/* ===================== LOGO ====================== */
+/* ================================================= */
+
+.logo{
+
+font-size:24px;
+
+font-weight:bold;
+
+text-align:center;
+
+margin-bottom:16px;
+
+background:
+linear-gradient(
+90deg,
+#b8ffcf,
+#8af5b2,
+#d8ffe5
+);
+
+-webkit-background-clip:text;
+
+-webkit-text-fill-color:transparent;
+
+text-shadow:
+0 0 8px #8af5b2;
+}
+
+
+/* ================================================= */
+/* ================= NEW CHAT ====================== */
+/* ================================================= */
+
+.newchat{
+
+width:100%;
+
+padding:11px;
+
+border:none;
+
+border-radius:12px;
+
+background:
+linear-gradient(
+90deg,
+#00c896,
+#00ffcc
+);
+
+color:black;
+
+font-weight:bold;
+
+cursor:pointer;
+
+margin-bottom:10px;
+
+font-size:14px;
+
+transition:
+transform 0.2s ease,
+box-shadow 0.2s ease;
+}
+
+.newchat:hover{
+
+transform:
+translateY(-1px);
+
+box-shadow:
+0 7px 18px rgba(0,255,204,0.18);
+}
+
+
+/* ================================================= */
+/* ===================== LOGOUT ===================== */
+/* ================================================= */
+
+.logout{
+
+width:100%;
+
+padding:10px;
+
+border:none;
+
+border-radius:12px;
+
+background:
+rgba(255,70,90,0.12);
+
+border:
+1px solid rgba(255,70,90,0.22);
+
+color:#ff9aa8;
+
+font-weight:bold;
+
+cursor:pointer;
+
+margin-bottom:16px;
+
+font-size:13px;
+
+transition:
+background 0.2s ease,
+transform 0.2s ease;
+}
+
+.logout:hover{
+
+background:
+rgba(255,70,90,0.20);
+
+transform:
+translateY(-1px);
+
+}
+
+
+/* ================================================= */
+/* =================== HISTORY ===================== */
+/* ================================================= */
+
+.history{
+
+display:flex;
+
+flex-direction:column;
+
+gap:8px;
+}
+
+.history div{
+
+background:
+rgba(255,255,255,0.06);
+
+padding:10px;
+
+border-radius:10px;
+
+cursor:pointer;
+
+font-size:13px;
+
+transition:0.3s;
+
+overflow:hidden;
+
+text-overflow:ellipsis;
+
+white-space:nowrap;
+}
+
+.history div:hover{
+
+background:
+rgba(255,255,255,0.10);
+}
+
+
+/* ================================================= */
+/* ===================== MAIN ====================== */
+/* ================================================= */
+
+.main{
+
+flex:1;
+
+display:flex;
+
+flex-direction:column;
+
+min-width:0;
+}
+
+
+/* ================================================= */
+/* ===================== HERO ====================== */
+/* ================================================= */
+
+.hero{
+
+text-align:center;
+
+padding:20px 10px 12px;
+}
+
+.hero h1{
+
+font-size:32px;
+
+background:
+linear-gradient(
+90deg,
+#00ffcc,
+#00c3ff,
+#8f00ff
+);
+
+-webkit-background-clip:text;
+
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+
+color:#ddd;
+
+margin-top:6px;
+
+font-size:14px;
+}
+
+
+/* ================================================= */
+/* =================== FEATURES ==================== */
+/* ================================================= */
+
+.features{
+
+display:flex;
+
+justify-content:center;
+
+gap:8px;
+
+flex-wrap:wrap;
+
+margin-bottom:12px;
+
+padding:0 8px;
+}
+
+.feature{
+
+padding:9px 14px;
+
+border-radius:22px;
+
+font-size:13px;
+
+background:
+rgba(255,255,255,0.06);
+
+border:
+1px solid rgba(255,255,255,0.08);
+
+backdrop-filter:blur(10px);
+
+transition:
+background 0.2s ease,
+transform 0.2s ease;
+}
+
+.feature:hover{
+
+background:
+rgba(255,255,255,0.10);
+
+transform:
+translateY(-1px);
+}
+
+
+/* ================================================= */
+/* ================= CHAT CONTAINER ================ */
+/* ================================================= */
+
+.chat-container{
+
+width:94%;
+
+margin:auto;
+
+flex:1;
+
+min-height:0;
+
+overflow:hidden;
+
+display:flex;
+
+flex-direction:column;
+
+position:relative;
+}
+
+
+/* ================================================= */
+/* ================= START SCREEN =================== */
+/* ================================================= */
+
+.chat-container.start-screen{
+
+background:transparent;
+
+border:none;
+}
+
+
+/* ================================================= */
+/* ==================== CHATBOX ===================== */
+/* ================================================= */
+
+#chatbox{
+
+flex:1;
+
+min-height:0;
+
+overflow-y:auto;
+
+padding:16px;
+
+display:flex;
+
+flex-direction:column;
+
+gap:14px;
+
+scroll-behavior:smooth;
+}
+
+
+/* ================================================= */
+/* ================= START CHATBOX ================= */
+/* ================================================= */
+
+.chat-container.start-screen #chatbox{
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+padding:0;
+}
+
+
+/* ================================================= */
+/* =============== PREMIUM INPUT AREA ============== */
+/* ================================================= */
+
+.input-area{
+
+display:flex;
+
+align-items:center;
+
+gap:12px;
+
+padding:16px 18px;
+
+background:
+linear-gradient(
+180deg,
+rgba(5,15,12,0.75),
+rgba(5,10,8,0.92)
+);
+
+border-top:
+1px solid rgba(255,255,255,0.06);
+
+flex-shrink:0;
+
+position:relative;
+}
+
+
+/* ================================================= */
+/* ================= START INPUT ==================== */
+/* ================================================= */
+
+.chat-container.start-screen .input-area{
+
+position:absolute;
+
+left:50%;
+
+top:50%;
+
+transform:
+translate(-50%,-50%);
+
+width:min(760px,90%);
+
+background:transparent;
+
+padding:0;
+
+z-index:20;
+}
+
+
+/* ================================================= */
+/* ================= CHAT STARTED ================== */
+/* ================================================= */
+
+.chat-container.chat-started .input-area{
+
+position:static;
+
+left:auto;
+
+top:auto;
+
+transform:none;
+
+width:auto;
+
+background:
+linear-gradient(
+180deg,
+rgba(5,15,12,0.75),
+rgba(5,10,8,0.92)
+);
+
+padding:16px 18px;
+}
+
+
+/* ================================================= */
+/* ================ PREMIUM INPUT BOX ============== */
+/* ================================================= */
+
+.input-box{
+
+flex:1;
+
+min-width:0;
+
+height:58px;
+
+display:flex;
+
+align-items:center;
+
+padding:0 9px;
+
+position:relative;
+
+background:
+linear-gradient(
+135deg,
+rgba(25,25,25,0.96),
+rgba(12,18,16,0.96)
+);
+
+border:
+1px solid rgba(255,255,255,0.13);
+
+border-radius:19px;
+
+box-shadow:
+0 8px 25px rgba(0,0,0,0.35),
+inset 0 1px 0 rgba(255,255,255,0.04);
+
+transition:
+border 0.25s ease,
+box-shadow 0.25s ease,
+transform 0.25s ease;
+}
+
+
+/* ================================================= */
+/* ================= INPUT FOCUS ==================== */
+/* ================================================= */
+
+.input-box:focus-within{
+
+border:
+1px solid rgba(0,255,204,0.55);
+
+box-shadow:
+0 0 0 3px rgba(0,255,204,0.07),
+0 8px 30px rgba(0,0,0,0.45),
+0 0 18px rgba(0,255,204,0.08);
+}
+
+
+/* ================================================= */
+/* ===================== INPUT ====================== */
+/* ================================================= */
+
+.input-box input{
+
+width:100%;
+
+flex:1;
+
+height:100%;
+
+background:transparent;
+
+border:none;
+
+outline:none;
+
+color:white;
+
+font-size:15px;
+
+min-width:0;
+
+padding:0 12px;
+}
+
+.input-box input::placeholder{
+
+color:#777;
+
+transition:
+color 0.2s ease;
+}
+
+.input-box:focus-within input::placeholder{
+
+color:#999;
+}
+
+
+/* ================================================= */
+/* ================= PREMIUM BUTTONS =============== */
+/* ================================================= */
+
+.send,
+.mic,
+.plus{
+
+width:44px;
+
+height:44px;
+
+flex-shrink:0;
+
+border:none;
+
+border-radius:15px;
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+cursor:pointer;
+
+font-size:18px;
+
+font-weight:400;
+
+color:#06110e;
+
+background:
+linear-gradient(
+135deg,
+#00ffcc,
+#00c896
+);
+
+box-shadow:
+0 5px 15px rgba(0,255,204,0.15);
+
+transition:
+transform 0.2s ease,
+box-shadow 0.2s ease,
+filter 0.2s ease;
+}
+
+
+/* ================================================= */
+/* ================= BUTTON HOVER =================== */
+/* ================================================= */
+
+.send:hover,
+.mic:hover{
+
+transform:
+translateY(-2px)
+scale(1.04);
+
+box-shadow:
+0 8px 22px rgba(0,255,204,0.25);
+
+filter:
+brightness(1.08);
+}
+
+
+/* ================================================= */
+/* ===================== PLUS ======================= */
+/* ================================================= */
+
+.plus{
+
+background:
+rgba(255,255,255,0.07);
+
+color:#e8e8e8;
+
+font-size:25px;
+
+font-weight:400;
+
+border:
+1px solid rgba(255,255,255,0.12);
+
+box-shadow:none;
+
+line-height:1;
+}
+
+.plus:hover{
+
+background:
+rgba(255,255,255,0.12);
+
+color:#00ffcc;
+
+border-color:
+rgba(0,255,204,0.35);
+
+transform:
+translateY(-1px);
+}
+
+
+/* ================================================= */
+/* ================= PLUS ACTIVE ==================== */
+/* ================================================= */
+
+.plus.active{
+
+background:
+linear-gradient(
+135deg,
+#00ffcc,
+#00c896
+);
+
+color:#06110e;
+
+border:none;
+
+box-shadow:
+0 0 18px rgba(0,255,204,0.25);
+}
+
+
+/* ================================================= */
+/* ================= SEND BUTTON ==================== */
+/* ================================================= */
+
+.send{
+
+font-size:20px;
+
+font-weight:400;
+}
+
+
+/* ================================================= */
+/* ================= MIC BUTTON ===================== */
+/* ================================================= */
+
+.mic{
+
+font-size:18px;
+
+font-weight:400;
+}
+
+
+/* ================================================= */
+/* ================= PLUS MENU ====================== */
+/* ================================================= */
+
+.plus-menu{
+
+position:absolute;
+
+bottom:82px;
+
+left:18px;
+
+width:210px;
+
+padding:8px;
+
+background:
+rgba(12,18,16,0.96);
+
+border:
+1px solid rgba(255,255,255,0.12);
+
+border-radius:17px;
+
+box-shadow:
+0 15px 40px rgba(0,0,0,0.5),
+0 0 25px rgba(0,255,204,0.05);
+
+backdrop-filter:
+blur(20px);
+
+display:none;
+
+flex-direction:column;
+
+gap:5px;
+
+z-index:100;
+
+animation:
+menuPop 0.18s ease;
+}
+
+
+.plus-menu.show{
+
+display:flex;
+
+}
+
+
+@keyframes menuPop{
+
+from{
+
+opacity:0;
+
+transform:
+translateY(8px)
+scale(0.96);
+}
+
+to{
+
+opacity:1;
+
+transform:
+translateY(0)
+scale(1);
+}
+}
+
+
+/* ================================================= */
+/* ================= PLUS OPTIONS =================== */
+/* ================================================= */
+
+.plus-option{
+
+width:100%;
+
+border:none;
+
+background:transparent;
+
+color:white;
+
+padding:11px;
+
+border-radius:10px;
+
+text-align:left;
+
+cursor:pointer;
+
+font-size:14px;
+
+font-weight:400;
+
+transition:
+background 0.2s ease,
+color 0.2s ease;
+}
+
+.plus-option:hover{
+
+background:
+rgba(255,255,255,0.08);
+}
+
+.plus-option.active{
+
+background:
+linear-gradient(
+90deg,
+rgba(0,255,204,0.25),
+rgba(0,200,150,0.15)
+);
+
+color:#00ffcc;
+
+font-weight:400;
+}
+
+
+/* ================================================= */
+/* ==================== MESSAGE ==================== */
+/* ================================================= */
+
+.msg{
+
+max-width:72%;
+
+padding:12px;
+
+border-radius:16px;
+
+line-height:1.4;
+
+font-size:14px;
+
+animation:
+fade 0.3s ease;
+
+overflow-wrap:anywhere;
+}
+
+@keyframes fade{
+
+from{
+
+opacity:0;
+
+transform:
+translateY(10px);
+}
+
+to{
+
+opacity:1;
+
+transform:
+translateY(0);
+}
+}
+
+
+/* ================================================= */
+/* ====================== BOT ====================== */
+/* ================================================= */
+
+.bot{
+
+align-self:flex-start;
+
+background:
+linear-gradient(
+135deg,
+rgba(0,255,204,0.20),
+rgba(0,195,255,0.15)
+);
+}
+
+
+/* ================================================= */
+/* ===================== USER ====================== */
+/* ================================================= */
+
+.user{
+
+align-self:flex-end;
+
+background:
+linear-gradient(
+135deg,
+rgba(143,0,255,0.25),
+rgba(255,0,76,0.15)
+);
+}
+
+
+/* ================================================= */
+/* ====================== TIME ===================== */
+/* ================================================= */
+
+.time{
+
+font-size:10px;
+
+opacity:0.6;
+
+margin-top:5px;
+}
+
+
+/* ================================================= */
+/* =================== LISTENING =================== */
+/* ================================================= */
+
+.listening{
+
+animation:
+pulse 1.2s infinite;
+
+box-shadow:
+0 0 10px #00ffcc,
+0 0 22px #00c896;
+}
+
+.listening::before{
+
+content:"";
+
+position:absolute;
+
+top:-4px;
+
+left:-4px;
+
+right:-4px;
+
+bottom:-4px;
+
+border-radius:18px;
+
+border:3px solid transparent;
+
+border-top:
+3px solid #00ffcc;
+
+border-right:
+3px solid #00c896;
+
+animation:
+rotateGlow 1s linear infinite;
+}
+
+@keyframes rotateGlow{
+
+from{
+
+transform:
+rotate(0deg);
+}
+
+to{
+
+transform:
+rotate(360deg);
+}
+}
+
+@keyframes pulse{
+
+0%{
+
+transform:
+scale(1);
+}
+
+50%{
+
+transform:
+scale(1.01);
+}
+
+100%{
+
+transform:
+scale(1);
+}
+}
+
+
+/* ================================================= */
+/* ===================== MOBILE ==================== */
+/* ================================================= */
+
+@media (max-width:768px){
+
+body{
+
+height:100dvh;
+}
+
+.container{
+
+height:100dvh;
+}
+
+.sidebar{
+
+display:none;
+}
+
+.main{
+
+width:100%;
+
+height:100%;
+}
+
+.hero{
+
+padding:
+14px 8px 8px;
+}
+
+.hero h1{
+
+font-size:25px;
+}
+
+.hero p{
+
+font-size:12px;
+
+margin-top:4px;
+}
+
+.features{
+
+gap:6px;
+
+margin-bottom:8px;
+
+padding:0 6px;
+}
+
+.feature{
+
+font-size:11px;
+
+padding:7px 10px;
+
+border-radius:18px;
+}
+
+.chat-container{
+
+width:100%;
+
+height:auto;
+
+border-radius:
+16px 16px 0 0;
+}
+
+.chat-container.start-screen{
+
+border-radius:0;
+
+background:transparent;
+}
+
+.chat-container.start-screen .input-area{
+
+width:92%;
+
+top:50%;
+}
+
+#chatbox{
+
+padding:
+12px 10px;
+
+gap:10px;
+}
+
+.msg{
+
+max-width:88%;
+
+padding:
+10px 11px;
+
+font-size:14px;
+
+border-radius:14px;
+}
+
+
+.input-area{
+
+padding:
+10px 9px;
+
+gap:7px;
+}
+
+.chat-container.chat-started .input-area{
+
+padding:
+10px 9px;
+}
+
+.input-box{
+
+height:50px;
+
+border-radius:16px;
+
+padding:0 6px;
+}
+
+.input-box input{
+
+font-size:14px;
+
+padding:
+0 8px;
+}
+
+.send,
+.mic,
+.plus{
+
+width:40px;
+
+height:40px;
+
+border-radius:13px;
+
+font-size:16px;
+
+font-weight:400;
+}
+
+.plus{
+
+font-size:23px;
+
+font-weight:400;
+}
+
+.plus-menu{
+
+bottom:68px;
+
+left:9px;
+
+width:190px;
+}
+
+}
+
+
+/* ================================================= */
+/* ================= SMALL PHONE =================== */
+/* ================================================= */
+
+@media (max-width:480px){
+
+.hero h1{
+
+font-size:22px;
+}
+
+.hero p{
+
+font-size:11px;
+}
+
+.features{
+
+gap:5px;
+}
+
+.feature{
+
+font-size:10px;
+
+padding:
+6px 8px;
+}
+
+#chatbox{
+
+padding:
+10px 8px;
+}
+
+.msg{
+
+max-width:92%;
+
+font-size:13px;
+
+padding:
+9px 10px;
+}
+
+.input-area{
+
+gap:6px;
+
+padding:
+8px 6px;
+}
+
+.chat-container.chat-started .input-area{
+
+padding:
+8px 6px;
+}
+
+.input-box{
+
+height:46px;
+
+border-radius:14px;
+
+padding:0 5px;
+}
+
+.input-box input{
+
+font-size:13px;
+
+padding:
+0 6px;
+}
+
+.send,
+.mic,
+.plus{
+
+width:37px;
+
+height:37px;
+
+border-radius:12px;
+
+font-size:15px;
+
+font-weight:400;
+}
+
+.plus{
+
+font-size:21px;
+
+font-weight:400;
+}
+
+.plus-menu{
+
+bottom:62px;
+
+left:6px;
+
+width:175px;
+}
+
+}
+
+
+/* ================================================= */
+/* ================= VERY SMALL PHONE ============= */
+/* ================================================= */
+
+@media (max-width:360px){
+
+.hero h1{
+
+font-size:20px;
+}
+
+.feature{
+
+font-size:9px;
+
+padding:
+5px 7px;
+}
+
+.msg{
+
+max-width:94%;
+
+font-size:12px;
+}
+
+.input-box{
+
+height:44px;
+}
+
+.input-box input{
+
+font-size:12px;
+}
+
+.send,
+.mic,
+.plus{
+
+width:35px;
+
+height:35px;
+
+font-weight:400;
+}
+
+.plus{
+
+font-size:20px;
+
+font-weight:400;
+}
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+<!-- ================================================= -->
+<!-- ===================== SIDEBAR =================== -->
+<!-- ================================================= -->
+
+<div class="sidebar">
+
+<div class="logo">
+Curio ⚡
+</div>
+
+<button
+class="newchat"
+onclick="newChat()"
+>
++ New Chat
+</button>
+
+<button
+class="logout"
+onclick="logout()"
+>
+🚪 Logout
+</button>
+
+<div
+class="history"
+id="history"
+></div>
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- ======================= MAIN ==================== -->
+<!-- ================================================= -->
+
+<div class="main">
+
+
+<div class="hero">
+
+<h1>
+Meet Curio
+</h1>
+
+<p>
+Your Coolest Smart AI Bot
+</p>
+
+</div>
+
+
+<div class="features">
+
+<div class="feature">
+🧠 Smart AI
+</div>
+
+<div class="feature">
+🎤 Voice Input
+</div>
+
+<div class="feature">
+🔊 Voice Output
+</div>
+
+<div class="feature">
+🌐 Web Search
+</div>
+
+</div>
+
+
+<div
+class="chat-container start-screen"
+id="chatContainer"
+>
+
+
+<div id="chatbox"></div>
+
+
+<div class="input-area">
+
+
+<button
+class="mic"
+onclick="voiceInput()"
+title="Voice Input"
+>
+🎤
+</button>
+
+
+<div
+class="input-box"
+id="inputBox"
+>
+
+
+<button
+class="plus"
+id="plusBtn"
+onclick="togglePlusMenu()"
+title="More options"
+>
++
+</button>
+
+
+<input
+id="input"
+placeholder="Message Curio..."
+autocomplete="off"
+>
+
+
+</div>
+
+
+<button
+class="send"
+onclick="send()"
+title="Send"
+>
+➤
+</button>
+
+
+<div
+class="plus-menu"
+id="plusMenu"
+>
+
+<button
+class="plus-option"
+id="voiceOption"
+onclick="toggleVoice()"
+>
+🔊 Voice Output
+</button>
+
+<button
+class="plus-option"
+id="webOption"
+onclick="toggleWeb()"
+>
+🌐 Web Search
+</button>
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+<script>
+
+
+/* ================================================= */
+/* ===================== SETTINGS =================== */
+/* ================================================= */
+
+let webEnabled = false;
+
+let voiceEnabled = false;
+
+
+/* ================================================= */
+/* ===================== ELEMENTS =================== */
+/* ================================================= */
+
+const chatContainer =
+document.getElementById(
+"chatContainer"
+);
+
+const plusMenu =
+document.getElementById(
+"plusMenu"
+);
+
+const plusBtn =
+document.getElementById(
+"plusBtn"
+);
+
+
+/* ================================================= */
+/* ==================== START CHAT ================== */
+/* ================================================= */
+
+function startChatUI(){
+
+chatContainer
+.classList
+.remove(
+"start-screen"
+);
+
+chatContainer
+.classList
+.add(
+"chat-started"
+);
+
+}
+
+
+/* ================================================= */
+/* ================= PLUS MENU ====================== */
+/* ================================================= */
+
+function togglePlusMenu(){
+
+plusMenu
+.classList
+.toggle(
+"show"
+);
+
+plusBtn
+.classList
+.toggle(
+"active"
+);
+
+}
+
+
+/* ================================================= */
+/* ================= CLOSE MENU ===================== */
+/* ================================================= */
+
+function closePlusMenu(){
+
+plusMenu
+.classList
+.remove(
+"show"
+);
+
+plusBtn
+.classList
+.remove(
+"active"
+);
+
+}
+
+
+/* ================================================= */
+/* ================= WEB SEARCH ===================== */
+/* ================================================= */
+
+function toggleWeb(){
+
+webEnabled =
+!webEnabled;
+
+document
+.getElementById(
+"webOption"
+)
+.classList
+.toggle(
+"active",
+webEnabled
+);
+
+}
+
+
+/* ================================================= */
+/* ================= VOICE OUTPUT =================== */
+/* ================================================= */
+
+function toggleVoice(){
+
+voiceEnabled =
+!voiceEnabled;
+
+document
+.getElementById(
+"voiceOption"
+)
+.classList
+.toggle(
+"active",
+voiceEnabled
+);
+
+}
+
+
+/* ================================================= */
+/* ====================== SEND ====================== */
+/* ================================================= */
+
+async function send(
+customText=null
+){
+
+const input =
+document.getElementById(
+"input"
+);
+
+let text =
+customText !== null
+? customText
+: input.value;
+
+if(!text.trim())
+return;
+
+
+/* START UI */
+
+startChatUI();
+
+closePlusMenu();
+
+
+/* ADD USER MESSAGE */
+
+addMessage(
+text,
+"user"
+);
+
+
+/* SAVE HISTORY */
+
+saveHistory(text);
+
+
+/* CLEAR INPUT */
+
+input.value="";
+
+
+try{
+
+
+/* ================= API REQUEST ================= */
+
+const res =
+await fetch(
+"/chat",
+{
+method:"POST",
+
+credentials:"same-origin",
+
+headers:{
+"Content-Type":
+"application/json"
+},
+
+body:JSON.stringify({
+
+message:text,
+
+web:webEnabled
+
+})
+}
+);
+
+
+/* ================= CHECK RESPONSE ================= */
+
+if(!res.ok){
+
+if(res.status === 401){
+
+window.location.replace(
+"/login.html"
+);
+
+return;
+
+}
+
+throw new Error(
+"Server response failed"
+);
+
+}
+
+
+/* ================= GET DATA ================= */
+
+const data =
+await res.json();
+
+
+/* ================= BOT MESSAGE ================= */
+
+addMessage(
+
+data.reply ||
+"⚠️ No response received.",
+
+"bot"
+
+);
+
+
+/* ================= VOICE OUTPUT ================= */
+
+if(voiceEnabled){
+
+speak(
+data.reply || ""
+);
+
+}
+
+
+}catch(error){
+
+console.error(error);
+
+addMessage(
+
+"⚠️ Server se response nahi mil raha. Please try again.",
+
+"bot"
+
+);
+
+}
+
+}
+
+
+/* ================================================= */
+/* ==================== MESSAGE ===================== */
+/* ================================================= */
+
+function addMessage(
+text,
+type
+){
+
+const box =
+document.getElementById(
+"chatbox"
+);
+
+const div =
+document.createElement(
+"div"
+);
+
+div.className =
+"msg " + type;
+
+
+let icon =
+type === "bot"
+? "🤖 "
+: "🧑 ";
+
+
+div.innerHTML =
+
+icon +
+
+escapeHTML(text) +
+
+`<div class="time">
+${new Date().toLocaleTimeString()}
+</div>`;
+
+
+box.appendChild(
+div
+);
+
+
+box.scrollTop =
+box.scrollHeight;
+
+}
+
+
+/* ================================================= */
+/* ================= SAFE HTML ====================== */
+/* ================================================= */
+
+function escapeHTML(text){
+
+const div =
+document.createElement(
+"div"
+);
+
+div.textContent =
+text;
+
+return div.innerHTML;
+
+}
+
+
+/* ================================================= */
+/* ==================== HISTORY ===================== */
+/* ================================================= */
+
+function saveHistory(text){
+
+const history =
+document.getElementById(
+"history"
+);
+
+const item =
+document.createElement(
+"div"
+);
+
+item.innerText =
+text.substring(
+0,
+30
+);
+
+history.prepend(
+item
+);
+
+}
+
+
+/* ================================================= */
+/* ==================== NEW CHAT ==================== */
+/* ================================================= */
+
+async function newChat(){
+
+
+/* CLEAR CHAT */
+
+document
+.getElementById(
+"chatbox"
+)
+.innerHTML="";
+
+
+/* RESET UI */
+
+chatContainer
+.classList
+.add(
+"start-screen"
+);
+
+chatContainer
+.classList
+.remove(
+"chat-started"
+);
+
+
+/* CLEAR INPUT */
+
+const input =
+document.getElementById(
+"input"
+);
+
+input.value="";
+
+input.focus();
+
+
+/* RESET WEB */
+
+webEnabled=false;
+
+document
+.getElementById(
+"webOption"
+)
+.classList
+.remove(
+"active"
+);
+
+
+/* RESET VOICE */
+
+voiceEnabled=false;
+
+document
+.getElementById(
+"voiceOption"
+)
+.classList
+.remove(
+"active"
+);
+
+
+/* CLOSE MENU */
+
+closePlusMenu();
+
+
+/* RESET SERVER */
+
+try{
+
+const response =
+await fetch(
+"/reset",
+{
+method:"POST",
+credentials:"same-origin"
+}
+);
+
+if(response.status === 401){
+
+window.location.replace(
+"/login.html"
+);
+
+return;
+
+}
+
+}catch(error){
+
+console.error(error);
+
+}
+
+}
+
+
+/* ================================================= */
+/* ===================== LOGOUT ==================== */
+/* ================================================= */
+
+async function logout(){
+
+try{
+
+const response =
+await fetch(
+"/logout",
+{
+method:"POST",
+credentials:"same-origin"
+}
+);
+
+const data =
+await response.json();
+
+if(data.success){
+
+window.location.replace(
+"/login.html"
+);
+
+}else{
+
+alert(
+"Logout failed. Please try again."
+);
+
+}
+
+}catch(error){
+
+console.error(
+"Logout Error:",
+error
+);
+
+alert(
+"Unable to logout. Please try again."
+);
+
+}
+
+}
+
+
+/* ================================================= */
+/* ===================== TYPING ===================== */
+/* ================================================= */
+
+document
+.getElementById(
+"input"
+)
+.addEventListener(
+"input",
+()=>{
+
+const input =
+document.getElementById(
+"input"
+);
+
+if(
+input.value.trim()
+){
+
+startChatUI();
+
+}
+
+}
+);
+
+
+/* ================================================= */
+/* ====================== ENTER ===================== */
+/* ================================================= */
+
+document
+.getElementById(
+"input"
+)
+.addEventListener(
+"keydown",
+(e)=>{
+
+if(
+e.key === "Enter"
+){
+
+e.preventDefault();
+
+send();
+
+}
+
+}
+);
+
+
+/* ================================================= */
+/* ================= VOICE OUTPUT =================== */
+/* ================================================= */
+
+function speak(text){
+
+if(
+!(
+"speechSynthesis"
+in window
+)
+){
+
+return;
+
+}
+
+
+window
+.speechSynthesis
+.cancel();
+
+
+let speech =
+new SpeechSynthesisUtterance(
+text
+);
+
+speech.lang =
+"en-US";
+
+speech.rate =
+1;
+
+
+window
+.speechSynthesis
+.speak(
+speech
+);
+
+}
+
+
+/* ================================================= */
+/* ================= VOICE INPUT ==================== */
+/* ================================================= */
+
+function voiceInput(){
+
+const SpeechRecognition =
+window.SpeechRecognition ||
+window.webkitSpeechRecognition;
+
+
+if(!SpeechRecognition){
+
+addMessage(
+
+"⚠️ Voice input is not supported in this browser.",
+
+"bot"
+
+);
+
+return;
+
+}
+
+
+startChatUI();
+
+closePlusMenu();
+
+
+const recognition =
+new SpeechRecognition();
+
+
+const inputBox =
+document.getElementById(
+"inputBox"
+);
+
+
+recognition.lang =
+"en-US";
+
+recognition.interimResults =
+false;
+
+recognition.maxAlternatives =
+1;
+
+
+inputBox
+.classList
+.add(
+"listening"
+);
+
+
+recognition.start();
+
+
+recognition.onresult =
+(e)=>{
+
+let text =
+e.results[0][0]
+.transcript;
+
+send(
+text
+);
+
+};
+
+
+recognition.onend =
+()=>{
+
+inputBox
+.classList
+.remove(
+"listening"
+);
+
+};
+
+
+recognition.onerror =
+()=>{
+
+inputBox
+.classList
+.remove(
+"listening"
+);
+
+};
+
+}
+
+
+/* ================================================= */
+/* ================= CLICK OUTSIDE ================== */
+/* ================================================= */
+
+document.addEventListener(
+"click",
+(e)=>{
+
+if(
+!e.target.closest(
+".input-box"
+) &&
+!e.target.closest(
+".plus-menu"
+)
+){
+
+closePlusMenu();
+
+}
+
+});
+
+
+</script>
+
+</body>
+
+</html>

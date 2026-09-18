@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Login - Curio</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#0b0f0c,#10241a,#1b4332,#081c15);
+    color:white;
+}
+
+.login-box{
+    width:360px;
+    padding:30px;
+    border-radius:20px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);
+    backdrop-filter:blur(15px);
+}
+
+.logo{
+    text-align:center;
+    font-size:30px;
+    font-weight:bold;
+    color:#00ffcc;
+    margin-bottom:8px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin-bottom:25px;
+}
+
+label{
+    display:block;
+    margin-bottom:7px;
+    font-size:13px;
+}
+
+input{
+    width:100%;
+    padding:13px;
+    margin-bottom:16px;
+    border:none;
+    outline:none;
+    border-radius:10px;
+    background:rgba(0,0,0,0.35);
+    color:white;
+    border:1px solid rgba(255,255,255,0.1);
+}
+
+input:focus{
+    border-color:#00ffcc;
+}
+
+.password-box{
+    position:relative;
+    margin-bottom:16px;
+}
+
+.password-box input{
+    margin-bottom:0;
+    padding-right:45px;
+}
+
+.show-password{
+    position:absolute;
+    right:12px;
+    top:50%;
+    transform:translateY(-50%);
+    cursor:pointer;
+    font-size:18px;
+    color:#aaa;
+    user-select:none;
+}
+
+.show-password:hover{
+    color:#00ffcc;
+}
+
+button{
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(90deg,#00c896,#00ffcc);
+    color:#06110e;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+button:hover{
+    transform:translateY(-1px);
+}
+
+button:disabled{
+    opacity:0.7;
+    cursor:not-allowed;
+}
+
+.signup{
+    text-align:center;
+    margin-top:18px;
+    font-size:13px;
+    color:#aaa;
+}
+
+.signup a{
+    color:#00ffcc;
+    text-decoration:none;
+}
+
+.signup a:hover{
+    text-decoration:underline;
+}
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+
+    <div class="logo">
+        Curio ⚡
+    </div>
+
+    <div class="subtitle">
+        Welcome back
+    </div>
+
+    <label>
+        Email
+    </label>
+
+    <input
+        id="email"
+        type="email"
+        placeholder="Enter your email"
+        autocomplete="email"
+    >
+
+    <label>
+        Password
+    </label>
+
+    <div class="password-box">
+
+        <input
+            id="password"
+            type="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+        >
+
+        <span
+            id="showPassword"
+            class="show-password"
+            title="Show password"
+        >👁️</span>
+
+    </div>
+
+    <button id="loginButton">
+        Login
+    </button>
+
+    <div class="signup">
+        Don't have an account?
+        <a href="/signup.html">
+            Sign Up
+        </a>
+    </div>
+
+</div>
+
+<script>
+
+// ==================================================
+// CHECK EXISTING LOGIN
+// ==================================================
+
+async function checkExistingLogin(){
+
+    try{
+
+        const response =
+            await fetch(
+                "/auth/me",
+                {
+                    method:"GET",
+                    credentials:"same-origin"
+                }
+            );
+
+        if(
+            response.ok
+        ){
+
+            const data =
+                await response.json();
+
+            if(
+                data.success
+            ){
+
+                window.location.replace(
+                    "/index.html"
+                );
+
+                return;
+            }
+        }
+
+    }catch(error){
+
+        console.log(
+            "Session Check Error:",
+            error
+        );
+    }
+}
+
+
+// Check login immediately
+checkExistingLogin();
+
+
+// ==================================================
+// ELEMENTS
+// ==================================================
+
+const emailInput =
+    document.getElementById(
+        "email"
+    );
+
+const passwordInput =
+    document.getElementById(
+        "password"
+    );
+
+const loginButton =
+    document.getElementById(
+        "loginButton"
+    );
+
+const showPassword =
+    document.getElementById(
+        "showPassword"
+    );
+
+
+// ==================================================
+// SHOW / HIDE PASSWORD
+// ==================================================
+
+showPassword.addEventListener(
+    "click",
+    () => {
+
+        if(
+            passwordInput.type ===
+            "password"
+        ){
+
+            passwordInput.type =
+                "text";
+
+            showPassword.textContent =
+                "🙈";
+
+            showPassword.title =
+                "Hide password";
+
+        }else{
+
+            passwordInput.type =
+                "password";
+
+            showPassword.textContent =
+                "👁️";
+
+            showPassword.title =
+                "Show password";
+        }
+
+    }
+);
+
+
+// ==================================================
+// LOGIN
+// ==================================================
+
+loginButton.addEventListener(
+    "click",
+    async () => {
+
+        const email =
+            emailInput.value.trim();
+
+        const password =
+            passwordInput.value;
+
+
+        if(
+            !email ||
+            !password
+        ){
+
+            alert(
+                "Please enter email and password."
+            );
+
+            return;
+        }
+
+
+        loginButton.disabled =
+            true;
+
+        loginButton.textContent =
+            "Logging in...";
+
+
+        try{
+
+            const response =
+                await fetch(
+                    "/login",
+                    {
+                        method:"POST",
+
+                        credentials:
+                            "same-origin",
+
+                        headers:{
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+                                email:
+                                    email,
+
+                                password:
+                                    password
+                            })
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if(
+                data.success
+            ){
+
+                alert(
+                    "Login successful! 🎉"
+                );
+
+                window.location.replace(
+                    "/index.html"
+                );
+
+            }else{
+
+                alert(
+                    data.message ||
+                    "Login failed."
+                );
+            }
+
+
+        }catch(error){
+
+            console.error(
+                "Login Error:",
+                error
+            );
+
+            alert(
+                "Unable to connect to Curio server."
+            );
+
+        }finally{
+
+            loginButton.disabled =
+                false;
+
+            loginButton.textContent =
+                "Login";
+        }
+
+    }
+);
+
+</script>
+
+</body>
+</html>
