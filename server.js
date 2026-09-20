@@ -4,6 +4,7 @@ const path = require("path");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { InferenceClient } = require("@huggingface/inference");
 
 const User = require("./models/User");
 
@@ -53,7 +54,19 @@ const GROQ_KEY = process.env.GROQ_API_KEY;
 const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
+const HUGGINGFACE_TOKEN =
+  process.env.HUGGINGFACE_TOKEN;
+
 const JWT_SECRET = process.env.JWT_SECRET;
+
+
+// ===============================
+// HUGGING FACE
+// ===============================
+
+const hf = HUGGINGFACE_TOKEN
+  ? new InferenceClient(HUGGINGFACE_TOKEN)
+  : null;
 
 
 // ===============================
@@ -61,9 +74,15 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // ===============================
 
 const GEMINI_MODEL = "gemini-2.5-flash";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+const GROQ_MODEL =
+  "llama-3.3-70b-versatile";
+
 const OPENROUTER_MODEL =
   "meta-llama/llama-3.1-8b-instruct";
+
+const IMAGE_MODEL =
+  "black-forest-labs/FLUX.1-Krea-dev";
 
 
 // ===============================
@@ -99,10 +118,13 @@ function getCookie(req, name) {
   const cookies = cookieHeader.split(";");
 
   for (const cookie of cookies) {
-    const [key, ...valueParts] = cookie.trim().split("=");
+    const [key, ...valueParts] =
+      cookie.trim().split("=");
 
     if (key === name) {
-      return decodeURIComponent(valueParts.join("="));
+      return decodeURIComponent(
+        valueParts.join("=")
+      );
     }
   }
 
@@ -163,11 +185,14 @@ function clearAuthCookie(res) {
 async function requireAuth(req, res, next) {
   try {
     if (!JWT_SECRET) {
-      console.error("JWT_SECRET is missing.");
+      console.error(
+        "JWT_SECRET is missing."
+      );
 
       return res.status(500).json({
         success: false,
-        message: "Server authentication is not configured."
+        message:
+          "Server authentication is not configured."
       });
     }
 
@@ -179,7 +204,8 @@ async function requireAuth(req, res, next) {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required."
+        message:
+          "Authentication required."
       });
     }
 
@@ -191,18 +217,21 @@ async function requireAuth(req, res, next) {
     if (!decoded.userId) {
       return res.status(401).json({
         success: false,
-        message: "Invalid authentication token."
+        message:
+          "Invalid authentication token."
       });
     }
 
-    const user = await User.findById(
-      decoded.userId
-    ).select("-password");
+    const user =
+      await User.findById(
+        decoded.userId
+      ).select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found."
+        message:
+          "User not found."
       });
     }
 
@@ -218,7 +247,8 @@ async function requireAuth(req, res, next) {
 
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired session."
+      message:
+        "Invalid or expired session."
     });
   }
 }
@@ -237,219 +267,221 @@ app.get("/", (req, res) => {
 // SIGNUP
 // ===============================
 
-app.post("/signup", async (req, res) => {
-  try {
-    const {
-      name,
-      email,
-      password
-    } = req.body;
+app.post(
+  "/signup",
+  async (req, res) => {
+    try {
+      const {
+        name,
+        email,
+        password
+      } = req.body;
 
-    if (
-      !name ||
-      !email ||
-      !password
-    ) {
-      return res.status(400).json({
-        success: false,
+      if (
+        !name ||
+        !email ||
+        !password
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Name, email and password are required."
+        });
+      }
+
+      const cleanName =
+        String(name).trim();
+
+      const cleanEmail =
+        String(email)
+          .trim()
+          .toLowerCase();
+
+      if (cleanName.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please enter a valid name."
+        });
+      }
+
+      if (cleanEmail.length < 5) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please enter a valid email."
+        });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Password must be at least 6 characters."
+        });
+      }
+
+      const existingUser =
+        await User.findOne({
+          email: cleanEmail
+        });
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "An account with this email already exists."
+        });
+      }
+
+      const hashedPassword =
+        await bcrypt.hash(
+          password,
+          10
+        );
+
+      const user =
+        new User({
+          name: cleanName,
+          email: cleanEmail,
+          password: hashedPassword
+        });
+
+      await user.save();
+
+      return res.json({
+        success: true,
         message:
-          "Name, email and password are required."
-      });
-    }
-
-    const cleanName =
-      String(name).trim();
-
-    const cleanEmail =
-      String(email)
-        .trim()
-        .toLowerCase();
-
-    if (cleanName.length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Please enter a valid name."
-      });
-    }
-
-    if (cleanEmail.length < 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Please enter a valid email."
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Password must be at least 6 characters."
-      });
-    }
-
-    const existingUser =
-      await User.findOne({
-        email: cleanEmail
+          "Account created successfully."
       });
 
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message:
-          "An account with this email already exists."
-      });
-    }
-
-    const hashedPassword =
-      await bcrypt.hash(
-        password,
-        10
+    } catch (error) {
+      console.error(
+        "Signup Error:",
+        error
       );
 
-    const user =
-      new User({
-        name: cleanName,
-        email: cleanEmail,
-        password: hashedPassword
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to create account."
       });
-
-    await user.save();
-
-    return res.json({
-      success: true,
-      message:
-        "Account created successfully."
-    });
-
-  } catch (error) {
-    console.error(
-      "Signup Error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Unable to create account."
-    });
+    }
   }
-});
+);
 
 
 // ===============================
 // LOGIN
 // ===============================
 
-app.post("/login", async (req, res) => {
-  try {
-    const {
-      email,
-      password
-    } = req.body;
+app.post(
+  "/login",
+  async (req, res) => {
+    try {
+      const {
+        email,
+        password
+      } = req.body;
 
-    if (
-      !email ||
-      !password
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Email and password are required."
-      });
-    }
+      if (
+        !email ||
+        !password
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Email and password are required."
+        });
+      }
 
-    const cleanEmail =
-      String(email)
-        .trim()
-        .toLowerCase();
+      const cleanEmail =
+        String(email)
+          .trim()
+          .toLowerCase();
 
-    const user =
-      await User.findOne({
-        email: cleanEmail
-      });
+      const user =
+        await User.findOne({
+          email: cleanEmail
+        });
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message:
-          "Invalid email or password."
-      });
-    }
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid email or password."
+        });
+      }
 
-    const passwordMatch =
-      await bcrypt.compare(
-        password,
-        user.password
+      const passwordMatch =
+        await bcrypt.compare(
+          password,
+          user.password
+        );
+
+      if (!passwordMatch) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid email or password."
+        });
+      }
+
+      if (!JWT_SECRET) {
+        console.error(
+          "JWT_SECRET is missing."
+        );
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Server authentication is not configured."
+        });
+      }
+
+      const token =
+        jwt.sign(
+          {
+            userId:
+              user._id.toString(),
+            email:
+              user.email
+          },
+          JWT_SECRET,
+          {
+            expiresIn: "30d"
+          }
+        );
+
+      setAuthCookie(
+        res,
+        token
       );
 
-    if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
+      return res.json({
+        success: true,
         message:
-          "Invalid email or password."
+          "Login successful.",
+        user: {
+          name: user.name,
+          email: user.email
+        }
       });
-    }
 
-    // ===============================
-    // CREATE JWT
-    // ===============================
-
-    if (!JWT_SECRET) {
+    } catch (error) {
       console.error(
-        "JWT_SECRET is missing."
+        "Login Error:",
+        error
       );
 
       return res.status(500).json({
         success: false,
         message:
-          "Server authentication is not configured."
+          "Unable to login."
       });
     }
-
-    const token =
-      jwt.sign(
-        {
-          userId: user._id.toString(),
-          email: user.email
-        },
-        JWT_SECRET,
-        {
-          expiresIn: "30d"
-        }
-      );
-
-    // ===============================
-    // SET HTTP ONLY COOKIE
-    // ===============================
-
-    setAuthCookie(
-      res,
-      token
-    );
-
-    return res.json({
-      success: true,
-      message:
-        "Login successful.",
-      user: {
-        name: user.name,
-        email: user.email
-      }
-    });
-
-  } catch (error) {
-    console.error(
-      "Login Error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Unable to login."
-    });
   }
-});
+);
 
 
 // ===============================
@@ -519,9 +551,12 @@ async function searchWeb(query) {
             api_key:
               TAVILY_API_KEY,
             query,
-            search_depth: "advanced",
-            include_answer: true,
-            include_raw_content: false,
+            search_depth:
+              "advanced",
+            include_answer:
+              true,
+            include_raw_content:
+              false,
             max_results: 5
           })
         }
@@ -557,14 +592,15 @@ async function searchWeb(query) {
       data.answer || "";
 
     if (!text) {
-      text = results
-        .map(
-          (item) =>
-            `${item.title}: ${
-              item.content || ""
-            }`
-        )
-        .join("\n\n");
+      text =
+        results
+          .map(
+            (item) =>
+              `${item.title}: ${
+                item.content || ""
+              }`
+          )
+          .join("\n\n");
     }
 
     return {
@@ -614,13 +650,16 @@ async function needsWebSearch(
               OPENROUTER_MODEL,
             messages: [
               {
-                role: "system",
+                role:
+                  "system",
                 content:
                   "Decide if the user's question requires current, live, recent, changing, or web-based information. Reply ONLY with YES or NO."
               },
               {
-                role: "user",
-                content: message
+                role:
+                  "user",
+                content:
+                  message
               }
             ],
             temperature: 0
@@ -636,7 +675,10 @@ async function needsWebSearch(
       await response.json();
 
     const answer =
-      data?.choices?.[0]?.message?.content
+      data
+        ?.choices?.[0]
+        ?.message
+        ?.content
         ?.trim()
         ?.toUpperCase();
 
@@ -752,8 +794,11 @@ async function askGemini(
       await response.json();
 
     const reply =
-      data?.candidates?.[0]?.content
-        ?.parts?.[0]?.text;
+      data
+        ?.candidates?.[0]
+        ?.content
+        ?.parts?.[0]
+        ?.text;
 
     return isUsableAnswer(
       reply
@@ -820,7 +865,10 @@ async function askGroq(
       await response.json();
 
     const reply =
-      data?.choices?.[0]?.message?.content;
+      data
+        ?.choices?.[0]
+        ?.message
+        ?.content;
 
     return isUsableAnswer(
       reply
@@ -891,7 +939,10 @@ async function askOpenRouter(
       await response.json();
 
     const reply =
-      data?.choices?.[0]?.message?.content;
+      data
+        ?.choices?.[0]
+        ?.message
+        ?.content;
 
     return isUsableAnswer(
       reply
@@ -908,6 +959,90 @@ async function askOpenRouter(
     return null;
   }
 }
+
+
+// ===============================
+// HUGGING FACE IMAGE GENERATION
+// ===============================
+
+app.post(
+  "/generate-image",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const {
+        prompt
+      } = req.body;
+
+      if (
+        !prompt ||
+        !String(prompt).trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Image prompt is required."
+        });
+      }
+
+      if (!HUGGINGFACE_TOKEN || !hf) {
+        return res.status(500).json({
+          success: false,
+          message:
+            "Hugging Face is not configured."
+        });
+      }
+
+      const cleanPrompt =
+        String(prompt).trim();
+
+      console.log(
+        "Generating image:",
+        cleanPrompt
+      );
+
+      const image =
+        await hf.textToImage({
+          model:
+            IMAGE_MODEL,
+          inputs:
+            cleanPrompt
+        });
+
+      const imageBuffer =
+        Buffer.from(
+          await image.arrayBuffer()
+        );
+
+      const imageBase64 =
+        imageBuffer.toString(
+          "base64"
+        );
+
+      return res.json({
+        success: true,
+        image:
+          `data:image/png;base64,${imageBase64}`,
+        provider:
+          "Hugging Face",
+        model:
+          IMAGE_MODEL
+      });
+
+    } catch (error) {
+      console.error(
+        "Hugging Face Image Error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to generate image right now."
+      });
+    }
+  }
+);
 
 
 // ===============================
@@ -938,10 +1073,6 @@ app.post(
       const userMessage =
         String(message).trim();
 
-      // ===============================
-      // AUTO WEB DETECTION
-      // ===============================
-
       let webUsed = false;
       let sources = [];
       let webText = "";
@@ -955,10 +1086,6 @@ app.post(
           );
       }
 
-      // ===============================
-      // WEB SEARCH
-      // ===============================
-
       if (webUsed) {
         const webResult =
           await searchWeb(
@@ -971,10 +1098,6 @@ app.post(
         sources =
           webResult.sources;
       }
-
-      // ===============================
-      // SYSTEM PROMPT
-      // ===============================
 
       const systemPrompt = `
 You are Curio, a smart and friendly AI assistant.
@@ -1005,10 +1128,6 @@ Keep answers appropriate and useful for the user.
         }
       ];
 
-      // ===============================
-      // ADD WEB INFORMATION
-      // ===============================
-
       if (webText) {
         messages.splice(
           1,
@@ -1021,10 +1140,6 @@ Keep answers appropriate and useful for the user.
         );
       }
 
-      // ===============================
-      // SAVE USER MESSAGE
-      // ===============================
-
       chatHistory.push({
         role: "user",
         content:
@@ -1034,22 +1149,15 @@ Keep answers appropriate and useful for the user.
       let reply = null;
       let provider = null;
 
-      // ===============================
-      // GEMINI
-      // ===============================
-
       reply =
         await askGemini(
           messages
         );
 
       if (reply) {
-        provider = "Gemini";
+        provider =
+          "Gemini";
       }
-
-      // ===============================
-      // GROQ
-      // ===============================
 
       if (!reply) {
         reply =
@@ -1058,13 +1166,10 @@ Keep answers appropriate and useful for the user.
           );
 
         if (reply) {
-          provider = "Groq";
+          provider =
+            "Groq";
         }
       }
-
-      // ===============================
-      // OPENROUTER
-      // ===============================
 
       if (!reply) {
         reply =
@@ -1077,10 +1182,6 @@ Keep answers appropriate and useful for the user.
             "OpenRouter";
         }
       }
-
-      // ===============================
-      // TAVILY FALLBACK
-      // ===============================
 
       if (!reply) {
         console.log(
@@ -1127,30 +1228,19 @@ ${fallbackWeb.text}`
         }
       }
 
-      // ===============================
-      // FINAL FAILURE
-      // ===============================
-
       if (!reply) {
         reply =
           "Sorry, I couldn't get a useful answer right now. Please try again.";
 
-        provider = "Fallback";
+        provider =
+          "Fallback";
       }
-
-      // ===============================
-      // SAVE ASSISTANT MESSAGE
-      // ===============================
 
       chatHistory.push({
         role: "assistant",
         content:
           reply
       });
-
-      // ===============================
-      // RESPONSE
-      // ===============================
 
       return res.json({
         success: true,
