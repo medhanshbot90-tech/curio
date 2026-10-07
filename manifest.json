@@ -1,0 +1,13 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "curio",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "curio",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "id": "/",
+  "description": "Curio is a smart AI assistant for chatting, web search, image generation, and more."
+}
