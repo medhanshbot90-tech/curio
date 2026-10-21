@@ -75,10 +75,10 @@ const hf = HUGGINGFACE_TOKEN
 // MODELS
 // ===============================
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL =  "gemini-3.8-flash";
 
 const GROQ_MODEL =
-  "llama-3.3-70b-versatile";
+  "openai/gpt-oss-120b";
 
 const OPENROUTER_MODEL =
   "meta-llama/llama-3.1-8b-instruct";
