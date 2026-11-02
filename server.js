@@ -1,5 +1,7 @@
 
 require("dotenv").config();
+const dns = require("node:dns");
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const express = require("express");
 const cors = require("cors");
@@ -34,12 +36,13 @@ const GROQ_TIMEOUT = 5000;
 const OPENROUTER_TIMEOUT = 5000;
 const TAVILY_TIMEOUT = 5000;
 
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_MESSAGE_LENGTH = 20000;
+
 const hf = HUGGINGFACE_TOKEN
   ? new InferenceClient(HUGGINGFACE_TOKEN)
   : null;
 
-// Node.js 24 has built-in fetch.
-// Using it avoids the asynchronous node-fetch initialization race.
 const fetch = globalThis.fetch;
 
 if (!MONGODB_URI) {
@@ -48,19 +51,98 @@ if (!MONGODB_URI) {
   mongoose
     .connect(MONGODB_URI)
     .then(() => console.log("MongoDB Connected Successfully"))
-    .catch((error) => console.error("MongoDB Connection Error:", error.message));
+    .catch((error) =>
+      console.error("MongoDB Connection Error:", error.message)
+    );
 }
 
 app.use(cors());
-app.use(express.json());
-
+app.use(express.json({ limit: "2mb" }));
 app.use(express.static(__dirname, { index: false }));
 
 // ===============================
 // CHAT HISTORY
 // ===============================
 
+// Note: This is in-memory shared history, not per-user history.
 let chatHistory = [];
+
+// ===============================
+// AI SYSTEM PROMPT
+// ===============================
+
+
+const SYSTEM_PROMPT = `
+You are Curio, a modern, intelligent and friendly AI assistant.
+
+IDENTITY
+- Your name is Curio.
+- You were created by Medhansh Bisht.
+- If asked who created you, reply:
+  "I was created by Medhansh Bisht 😎🔥"
+- Never claim to be human or pretend to have real emotions.
+
+PERSONALITY
+- Be friendly, thoughtful, confident and approachable.
+- Communicate naturally, like a helpful intelligent assistant.
+- Use light humour when appropriate.
+- Be respectful, patient and encouraging.
+- Never sound rude, arrogant or unnecessarily robotic.
+- Do not force jokes, emojis or greetings into every reply.
+
+COMMUNICATION
+- Match the user's language and communication style.
+- Understand Hindi, English and Hinglish.
+- Answer the actual question directly.
+- Keep simple answers short and explain complex topics properly.
+- Remember relevant details from the current conversation.
+- Never ask for information already provided.
+- Ask only one clear question when clarification is necessary.
+
+SMART MODES
+1. STUDY MODE
+   Explain concepts simply with examples.
+   Adapt explanations to the student's level.
+   Encourage understanding instead of memorisation.
+
+2. CODING MODE
+   Write clean, readable and practical code.
+   Explain important changes.
+   Preserve existing functionality.
+   Never claim code was tested unless it was.
+
+3. CREATIVE MODE
+   Help with brainstorming, writing, ideas and projects.
+   Be imaginative while keeping suggestions useful.
+
+4. PROFESSIONAL MODE
+   Use a polished, precise and structured tone.
+   Prioritise accuracy and clarity.
+
+5. CASUAL MODE
+   Be relaxed, friendly and conversational.
+   Use appropriate humour without becoming distracting.
+
+ACCURACY AND SAFETY
+- Never invent facts, sources or capabilities.
+- Be honest about uncertainty.
+- Protect private information and API keys.
+- Follow applicable safety requirements.
+- Do not pretend to remember information unavailable in context.
+
+RESPONSE STYLE
+- Use headings and lists only when useful.
+- Avoid repetitive introductions.
+- Do not overuse emojis.
+- Give practical and meaningful answers.
+- Adapt naturally to the situation.
+
+CORE MISSION
+Help people learn, explore, create, solve problems
+and think more confidently.
+
+Every interaction should feel clear, helpful and natural.
+`;
 
 // ===============================
 // COOKIE HELPERS
@@ -74,7 +156,11 @@ function getCookie(req, name) {
     const [key, ...valueParts] = cookie.trim().split("=");
 
     if (key === name) {
-      return decodeURIComponent(valueParts.join("="));
+      try {
+        return decodeURIComponent(valueParts.join("="));
+      } catch {
+        return null;
+      }
     }
   }
 
@@ -200,7 +286,7 @@ app.post("/signup", async (req, res) => {
       });
     }
 
-    if (cleanEmail.length < 5) {
+    if (cleanEmail.length < 5 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({
         success: false,
         message: "Please enter a valid email."
@@ -351,9 +437,9 @@ app.post("/logout", (req, res) => {
 // ===============================
 
 function isUsableAnswer(reply) {
-  if (!reply) return false;
+  if (typeof reply !== "string") return false;
 
-  const text = String(reply).trim();
+  const text = reply.trim();
   if (text.length < 2) return false;
 
   const badResponses = [
@@ -380,24 +466,21 @@ async function searchWeb(query) {
       return { text: "", sources: [] };
     }
 
-    const response = await fetch(
-      "https://api.tavily.com/search",
-      {
-        method: "POST",
-        signal: AbortSignal.timeout(TAVILY_TIMEOUT),
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          api_key: TAVILY_API_KEY,
-          query,
-          search_depth: "advanced",
-          include_answer: true,
-          include_raw_content: false,
-          max_results: 5
-        })
-      }
-    );
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      signal: AbortSignal.timeout(TAVILY_TIMEOUT),
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        query,
+        search_depth: "advanced",
+        include_answer: true,
+        include_raw_content: false,
+        max_results: 5
+      })
+    });
 
     if (!response.ok) {
       console.error("Tavily Error:", response.status);
@@ -405,26 +488,31 @@ async function searchWeb(query) {
     }
 
     const data = await response.json();
-    const results = data.results || [];
+    const results = Array.isArray(data.results) ? data.results : [];
 
-    const sources = results.map((item) => ({
-      title: item.title || "Source",
-      url: item.url || ""
-    }));
+    const sources = results
+      .filter((item) => item.url)
+      .map((item) => ({
+        title: item.title || "Source",
+        url: item.url
+      }));
 
     let text = data.answer || "";
 
     if (!text) {
       text = results
-        .map((item) => `${item.title}: ${item.content || ""}`)
+        .map((item) => `${item.title || "Source"}: ${item.content || ""}`)
         .join("\n\n");
     }
 
     return { text, sources };
   } catch (error) {
-    console.error("Tavily Search Error:", error.name === "TimeoutError"
-      ? "Request timed out."
-      : error.message);
+    console.error(
+      "Tavily Search Error:",
+      error.name === "TimeoutError" || error.name === "AbortError"
+        ? "Request timed out."
+        : error.message
+    );
 
     return { text: "", sources: [] };
   }
@@ -438,10 +526,38 @@ async function askGemini(messages) {
   try {
     if (!GEMINI_KEY) return null;
 
-    const contents = messages.map((message) => ({
-      role: message.role === "assistant" ? "model" : "user",
-      parts: [{ text: message.content }]
-    }));
+    // Gemini uses systemInstruction for the system prompt.
+    // System messages must not be converted into user messages.
+    const systemText = messages
+      .filter((message) => message.role === "system")
+      .map((message) => message.content)
+      .join("\n\n");
+
+    const contents = messages
+      .filter(
+        (message) =>
+          message.role === "user" || message.role === "assistant"
+      )
+      .map((message) => ({
+        role: message.role === "assistant" ? "model" : "user",
+        parts: [{ text: String(message.content) }]
+      }));
+
+    if (!contents.length) return null;
+
+    const requestBody = {
+      contents,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4096
+      }
+    };
+
+    if (systemText) {
+      requestBody.systemInstruction = {
+        parts: [{ text: systemText }]
+      };
+    }
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
@@ -451,19 +567,22 @@ async function askGemini(messages) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ contents })
+        body: JSON.stringify(requestBody)
       }
     );
 
     if (!response.ok) {
-      console.error("Gemini Error:", response.status);
+      const errorText = await response.text();
+      console.error("Gemini Error:", response.status, errorText.slice(0, 300));
       return null;
     }
 
     const data = await response.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const reply = data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("");
 
-    return isUsableAnswer(reply) ? reply : null;
+    return isUsableAnswer(reply) ? reply.trim() : null;
   } catch (error) {
     console.error(
       "Gemini Error:",
@@ -496,20 +615,22 @@ async function askGroq(messages) {
         body: JSON.stringify({
           model: GROQ_MODEL,
           messages,
-          temperature: 0.7
+          temperature: 0.7,
+          max_tokens: 4096
         })
       }
     );
 
     if (!response.ok) {
-      console.error("Groq Error:", response.status);
+      const errorText = await response.text();
+      console.error("Groq Error:", response.status, errorText.slice(0, 300));
       return null;
     }
 
     const data = await response.json();
     const reply = data?.choices?.[0]?.message?.content;
 
-    return isUsableAnswer(reply) ? reply : null;
+    return isUsableAnswer(reply) ? reply.trim() : null;
   } catch (error) {
     console.error(
       "Groq Error:",
@@ -544,20 +665,26 @@ async function askOpenRouter(messages) {
         body: JSON.stringify({
           model: OPENROUTER_MODEL,
           messages,
-          temperature: 0.7
+          temperature: 0.7,
+          max_tokens: 4096
         })
       }
     );
 
     if (!response.ok) {
-      console.error("OpenRouter Error:", response.status);
+      const errorText = await response.text();
+      console.error(
+        "OpenRouter Error:",
+        response.status,
+        errorText.slice(0, 300)
+      );
       return null;
     }
 
     const data = await response.json();
     const reply = data?.choices?.[0]?.message?.content;
 
-    return isUsableAnswer(reply) ? reply : null;
+    return isUsableAnswer(reply) ? reply.trim() : null;
   } catch (error) {
     console.error(
       "OpenRouter Error:",
@@ -576,7 +703,7 @@ async function askOpenRouter(messages) {
 
 app.post("/generate-image", requireAuth, async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt } = req.body || {};
 
     if (!prompt || !String(prompt).trim()) {
       return res.status(400).json({
@@ -594,7 +721,7 @@ app.post("/generate-image", requireAuth, async (req, res) => {
 
     const cleanPrompt = String(prompt).trim();
 
-    console.log("Generating image:", cleanPrompt);
+    console.log("Generating image request.");
 
     const image = await hf.textToImage({
       model: IMAGE_MODEL,
@@ -626,38 +753,29 @@ app.post("/generate-image", requireAuth, async (req, res) => {
 
 app.post("/chat", requireAuth, async (req, res) => {
   try {
-    const { message, web } = req.body;
+    const { message, web } = req.body || {};
 
-    if (!message || !String(message).trim()) {
+    if (typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
         success: false,
         message: "Message is required."
       });
     }
 
-    const userMessage = String(message).trim();
+    const userMessage = message.trim();
 
-    const systemPrompt = `
-You are Curio, a smart and friendly AI assistant.
-
-Be helpful, clear, accurate and natural.
-
-If the user asks who created, made, developed, owns, or built you, reply exactly:
-"I was created by Medhansh Bisht 😎🔥"
-
-Do not claim to be ChatGPT.
-
-If web search information is provided, use it when relevant and do not invent facts.
-
-Keep answers appropriate and useful for the user.
-`;
+    if (userMessage.length > MAX_MESSAGE_LENGTH) {
+      return res.status(413).json({
+        success: false,
+        message: "Message is too long. Please shorten it and try again."
+      });
+    }
 
     let webUsed = false;
     let sources = [];
     let webText = "";
 
-    // If the user explicitly enables web search, search first
-    // so that the AI providers can use those results as context.
+    // Search only when the frontend explicitly enables web search.
     if (web === true) {
       const webResult = await searchWeb(userMessage);
 
@@ -666,36 +784,48 @@ Keep answers appropriate and useful for the user.
       webUsed = Boolean(webText);
     }
 
-    const messages = [
+    // Build the system instructions and optional web context.
+    const systemMessages = [
       {
         role: "system",
-        content: systemPrompt
-      },
-      ...chatHistory,
+        content: SYSTEM_PROMPT
+      }
+    ];
+
+    if (webText) {
+      systemMessages.push({
+        role: "system",
+        content:
+          "Web search results are provided below. Use them when relevant, " +
+          "prioritize reliable and recent information, and do not invent " +
+          "details that are not supported by the results.\n\n" +
+          webText
+      });
+    }
+
+    // Keep only the most recent messages to control context size.
+    const recentHistory = chatHistory.slice(-MAX_HISTORY_MESSAGES);
+
+    const messages = [
+      ...systemMessages,
+      ...recentHistory,
       {
         role: "user",
         content: userMessage
       }
     ];
 
-    if (webText) {
-      messages.splice(1, 0, {
-        role: "system",
-        content: `Web search information:\n\n${webText}`
-      });
-    }
-
     let reply = null;
     let provider = null;
 
-    // 1. GEMINI — maximum 5 seconds
+    // 1. Gemini
     reply = await askGemini(messages);
 
     if (reply) {
       provider = "Gemini";
     }
 
-    // 2. GROQ — maximum 5 seconds
+    // 2. Groq
     if (!reply) {
       reply = await askGroq(messages);
 
@@ -704,7 +834,7 @@ Keep answers appropriate and useful for the user.
       }
     }
 
-    // 3. OPENROUTER — maximum 5 seconds
+    // 3. OpenRouter
     if (!reply) {
       reply = await askOpenRouter(messages);
 
@@ -713,10 +843,9 @@ Keep answers appropriate and useful for the user.
       }
     }
 
-    // 4. TAVILY — only after all AI providers fail.
-    // If web was already searched, reuse those results.
+    // 4. Tavily fallback if every AI provider fails.
     if (!reply) {
-      console.log("All AI providers failed. Using Tavily fallback.");
+      console.log("All AI providers failed. Trying Tavily fallback.");
 
       let fallbackWeb = {
         text: webText,
@@ -736,15 +865,22 @@ Keep answers appropriate and useful for the user.
     }
 
     if (!reply) {
-      reply = "Sorry, I couldn't get a useful answer right now. Please try again.";
+      reply =
+        "Sorry, I couldn't get a useful answer right now. " +
+        "Please try again in a moment.";
       provider = "Fallback";
     }
 
-    // Preserve the existing chat-history behavior.
+    // Keep the existing in-memory history behavior.
     chatHistory.push(
       { role: "user", content: userMessage },
       { role: "assistant", content: reply }
     );
+
+    // Bound the amount of history held in memory.
+    if (chatHistory.length > MAX_HISTORY_MESSAGES) {
+      chatHistory = chatHistory.slice(-MAX_HISTORY_MESSAGES);
+    }
 
     return res.json({
       success: true,

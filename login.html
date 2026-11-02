@@ -1,421 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Login - Curio</title>
-
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#070b0a"><title>Welcome to Curio</title>
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:Arial,sans-serif;
-}
-
-body{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:linear-gradient(135deg,#0b0f0c,#10241a,#1b4332,#081c15);
-    color:white;
-}
-
-.login-box{
-    width:360px;
-    padding:30px;
-    border-radius:20px;
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.12);
-    backdrop-filter:blur(15px);
-}
-
-.logo{
-    text-align:center;
-    font-size:30px;
-    font-weight:bold;
-    color:#00ffcc;
-    margin-bottom:8px;
-}
-
-.subtitle{
-    text-align:center;
-    color:#aaa;
-    margin-bottom:25px;
-}
-
-label{
-    display:block;
-    margin-bottom:7px;
-    font-size:13px;
-}
-
-input{
-    width:100%;
-    padding:13px;
-    margin-bottom:16px;
-    border:none;
-    outline:none;
-    border-radius:10px;
-    background:rgba(0,0,0,0.35);
-    color:white;
-    border:1px solid rgba(255,255,255,0.1);
-}
-
-input:focus{
-    border-color:#00ffcc;
-}
-
-.password-box{
-    position:relative;
-    margin-bottom:16px;
-}
-
-.password-box input{
-    margin-bottom:0;
-    padding-right:45px;
-}
-
-.show-password{
-    position:absolute;
-    right:12px;
-    top:50%;
-    transform:translateY(-50%);
-    cursor:pointer;
-    font-size:18px;
-    color:#aaa;
-    user-select:none;
-}
-
-.show-password:hover{
-    color:#00ffcc;
-}
-
-button{
-    width:100%;
-    padding:13px;
-    border:none;
-    border-radius:10px;
-    background:linear-gradient(90deg,#00c896,#00ffcc);
-    color:#06110e;
-    font-weight:bold;
-    cursor:pointer;
-    transition:0.2s;
-}
-
-button:hover{
-    transform:translateY(-1px);
-}
-
-button:disabled{
-    opacity:0.7;
-    cursor:not-allowed;
-}
-
-.signup{
-    text-align:center;
-    margin-top:18px;
-    font-size:13px;
-    color:#aaa;
-}
-
-.signup a{
-    color:#00ffcc;
-    text-decoration:none;
-}
-
-.signup a:hover{
-    text-decoration:underline;
-}
+:root{--bg:#070b0a;--panel:#0d1512;--panel2:#101d18;--line:rgba(174,230,208,.13);--muted:#91a39a;--text:#f1f8f4;--mint:#65e6b5;--mint2:#2bbf91;--shadow:0 28px 90px rgba(0,0,0,.42)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:radial-gradient(ellipse at 18% 18%,rgba(30,120,88,.22),transparent 38%),radial-gradient(ellipse at 85% 82%,rgba(20,91,71,.17),transparent 36%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.2;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:54px 54px;mask-image:linear-gradient(to bottom,black,transparent 90%)}
+a{color:inherit;text-decoration:none}
+.shell{position:relative;z-index:1;max-width:1220px;min-height:100vh;margin:auto;padding:28px 46px 24px;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:750;letter-spacing:-.7px}
+.brand-mark{width:35px;height:35px;border-radius:12px;display:grid;place-items:center;color:#06130e;background:linear-gradient(145deg,#a1f5d3,#38c99a);box-shadow:0 0 28px rgba(76,224,172,.22);font-size:19px}
+.top-note{font-size:12px;color:#8fa39a;letter-spacing:.12em;text-transform:uppercase}
+.main{flex:1;display:grid;grid-template-columns:minmax(0,1.12fr) minmax(360px,.88fr);align-items:center;gap:clamp(44px,8vw,112px);padding:54px 0}
+.intro{max-width:590px}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid rgba(101,230,181,.2);border-radius:999px;background:rgba(45,150,111,.09);color:#9aebc9;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.eyebrow:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 12px var(--mint)}
+h1{font-size:clamp(46px,6.1vw,76px);line-height:1.02;letter-spacing:-.065em;font-weight:760;margin:26px 0 22px}
+h1 span{color:var(--mint);text-shadow:0 0 34px rgba(101,230,181,.14)}
+.lead{max-width:510px;color:#a6b5ad;font-size:16px;line-height:1.85}
+.features{display:flex;flex-wrap:wrap;gap:10px;margin-top:32px}
+.feature{padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025);font-size:12px;color:#c3d1ca}
+.feature b{color:var(--mint);font-weight:600;margin-right:6px}
+.auth-wrap{width:100%;max-width:430px;justify-self:end}
+.auth-card{padding:34px;border-radius:25px;background:linear-gradient(145deg,rgba(19,33,27,.96),rgba(10,17,14,.96));border:1px solid rgba(173,230,206,.15);box-shadow:var(--shadow),inset 0 1px rgba(255,255,255,.045);backdrop-filter:blur(22px)}
+.card-kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mint);font-weight:700}
+.card-title{font-size:29px;letter-spacing:-1.1px;margin-top:10px}
+.card-subtitle{font-size:13px;color:var(--muted);margin-top:8px;margin-bottom:28px}
+label{display:block;font-size:12px;color:#c8d5ce;font-weight:600;margin:0 0 9px}
+.field{margin-bottom:19px}
+input{width:100%;height:49px;padding:0 15px;border:1px solid rgba(190,224,208,.13);border-radius:12px;background:rgba(2,8,6,.52);color:var(--text);font-size:14px;outline:none;transition:border .2s,box-shadow .2s}
+input::placeholder{color:#62736a}
+input:focus{border-color:rgba(101,230,181,.7);box-shadow:0 0 0 4px rgba(101,230,181,.09)}
+.password-box{position:relative}
+.password-box input{padding-right:52px}
+.show-password{position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;color:#82958b;font-size:12px;font-weight:650;user-select:none}
+.show-password:hover{color:var(--mint)}
+.primary-btn{width:100%;height:50px;border:0;border-radius:12px;background:linear-gradient(105deg,#69e8b7,#37c995);color:#062017;font-size:14px;font-weight:800;letter-spacing:.01em;cursor:pointer;box-shadow:0 10px 28px rgba(44,201,149,.16);transition:transform .2s,filter .2s,box-shadow .2s}
+.primary-btn:hover{transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 14px 34px rgba(44,201,149,.23)}
+.primary-btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.switch{margin-top:23px;text-align:center;color:#8fa198;font-size:13px}
+.switch a{color:var(--mint);font-weight:700;margin-left:4px}
+.switch a:hover{text-decoration:underline;text-underline-offset:4px}
+.footer{display:flex;justify-content:space-between;gap:16px;color:#63756b;font-size:11px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)}
+.footer strong{color:#91a69a;font-weight:600}
+@media(max-width:850px){.shell{padding:24px 24px 20px}.main{gap:36px;grid-template-columns:1fr 1fr}.auth-card{padding:28px}.top-note{display:none}h1{font-size:clamp(42px,6vw,60px)}}
+@media(max-width:680px){.shell{padding:20px 18px 18px}.main{grid-template-columns:1fr;gap:30px;padding:48px 0 34px}.intro{max-width:560px}.auth-wrap{max-width:480px;justify-self:stretch;margin:auto}h1{font-size:clamp(43px,12vw,60px);margin:20px 0 16px}.lead{font-size:14px;line-height:1.7}.features{margin-top:22px}.auth-card{padding:26px 22px;border-radius:21px}.card-title{font-size:26px}.footer{font-size:10px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
 </style>
 </head>
-
 <body>
-
-<div class="login-box">
-
-    <div class="logo">
-        Curio ⚡
-    </div>
-
-    <div class="subtitle">
-        Welcome back
-    </div>
-
-    <label>
-        Email
-    </label>
-
-    <input
-        id="email"
-        type="email"
-        placeholder="Enter your email"
-        autocomplete="email"
-    >
-
-    <label>
-        Password
-    </label>
-
-    <div class="password-box">
-
-        <input
-            id="password"
-            type="password"
-            placeholder="Enter your password"
-            autocomplete="current-password"
-        >
-
-        <span
-            id="showPassword"
-            class="show-password"
-            title="Show password"
-        >👁️</span>
-
-    </div>
-
-    <button id="loginButton">
-        Login
-    </button>
-
-    <div class="signup">
-        Don't have an account?
-        <a href="/signup.html">
-            Sign Up
-        </a>
-    </div>
-
+<div class="shell">
+<header class="topbar"><a class="brand" href="/login.html"><span class="brand-mark">✳</span><span>curio</span></a><div class="top-note">Your personal AI workspace</div></header>
+<main class="main">
+<section class="intro">
+<div class="eyebrow">A smarter way to explore</div>
+<h1>Think beyond.<br><span>Discover Curio.</span></h1>
+<p class="lead">Meet Curio — your personal AI workspace for thinking, creating, exploring and getting things done. Bring your ideas together and turn curiosity into meaningful progress.</p>
+<div class="features"><div class="feature"><b>✦</b>Think clearly</div><div class="feature"><b>↗</b>Create freely</div><div class="feature"><b>⌘</b>Stay in flow</div></div>
+</section>
+<section class="auth-wrap"><div class="auth-card">
+<div class="card-kicker">Welcome back</div><h2 class="card-title">Log in to Curio</h2><p class="card-subtitle">Pick up right where your ideas left off.</p>
+<div class="field"><label for="email">Email address</label><input id="email" type="email" placeholder="you@example.com" autocomplete="email"></div>
+<div class="field"><label for="password">Password</label><div class="password-box"><input id="password" type="password" placeholder="Enter your password" autocomplete="current-password"><span id="showPassword" class="show-password" title="Show password">Show</span></div></div>
+<button id="loginButton" class="primary-btn" type="button">Log In <span aria-hidden="true">→</span></button>
+<div class="switch">New to Curio? <a href="/signup.html">Create your account now →</a></div>
+</div></section>
+</main>
+<footer class="footer"><span><strong>✳ Curio</strong> · Thoughtfully built for curious minds</span><span>© 2026 Curio</span></footer>
 </div>
-
 <script>
-
-// ==================================================
-// CHECK EXISTING LOGIN
-// ==================================================
-
-async function checkExistingLogin(){
-
-    try{
-
-        const response =
-            await fetch(
-                "/auth/me",
-                {
-                    method:"GET",
-                    credentials:"same-origin"
-                }
-            );
-
-        if(
-            response.ok
-        ){
-
-            const data =
-                await response.json();
-
-            if(
-                data.success
-            ){
-
-                window.location.replace(
-                    "/index.html"
-                );
-
-                return;
-            }
-        }
-
-    }catch(error){
-
-        console.log(
-            "Session Check Error:",
-            error
-        );
-    }
-}
-
-
-// Check login immediately
+async function checkExistingLogin(){try{const response=await fetch("/auth/me",{method:"GET",credentials:"same-origin"});if(response.ok){const data=await response.json();if(data.success){window.location.replace("/index.html");return;}}}catch(error){console.log("Session Check Error:",error);}}
 checkExistingLogin();
-
-
-// ==================================================
-// ELEMENTS
-// ==================================================
-
-const emailInput =
-    document.getElementById(
-        "email"
-    );
-
-const passwordInput =
-    document.getElementById(
-        "password"
-    );
-
-const loginButton =
-    document.getElementById(
-        "loginButton"
-    );
-
-const showPassword =
-    document.getElementById(
-        "showPassword"
-    );
-
-
-// ==================================================
-// SHOW / HIDE PASSWORD
-// ==================================================
-
-showPassword.addEventListener(
-    "click",
-    () => {
-
-        if(
-            passwordInput.type ===
-            "password"
-        ){
-
-            passwordInput.type =
-                "text";
-
-            showPassword.textContent =
-                "🙈";
-
-            showPassword.title =
-                "Hide password";
-
-        }else{
-
-            passwordInput.type =
-                "password";
-
-            showPassword.textContent =
-                "👁️";
-
-            showPassword.title =
-                "Show password";
-        }
-
-    }
-);
-
-
-// ==================================================
-// LOGIN
-// ==================================================
-
-loginButton.addEventListener(
-    "click",
-    async () => {
-
-        const email =
-            emailInput.value.trim();
-
-        const password =
-            passwordInput.value;
-
-
-        if(
-            !email ||
-            !password
-        ){
-
-            alert(
-                "Please enter email and password."
-            );
-
-            return;
-        }
-
-
-        loginButton.disabled =
-            true;
-
-        loginButton.textContent =
-            "Logging in...";
-
-
-        try{
-
-            const response =
-                await fetch(
-                    "/login",
-                    {
-                        method:"POST",
-
-                        credentials:
-                            "same-origin",
-
-                        headers:{
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body:
-                            JSON.stringify({
-                                email:
-                                    email,
-
-                                password:
-                                    password
-                            })
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if(
-                data.success
-            ){
-
-                alert(
-                    "Login successful! 🎉"
-                );
-
-                window.location.replace(
-                    "/index.html"
-                );
-
-            }else{
-
-                alert(
-                    data.message ||
-                    "Login failed."
-                );
-            }
-
-
-        }catch(error){
-
-            console.error(
-                "Login Error:",
-                error
-            );
-
-            alert(
-                "Unable to connect to Curio server."
-            );
-
-        }finally{
-
-            loginButton.disabled =
-                false;
-
-            loginButton.textContent =
-                "Login";
-        }
-
-    }
-);
-
+const emailInput=document.getElementById("email");
+const passwordInput=document.getElementById("password");
+const loginButton=document.getElementById("loginButton");
+const showPassword=document.getElementById("showPassword");
+showPassword.addEventListener("click",()=>{const visible=passwordInput.type==="password";passwordInput.type=visible?"text":"password";showPassword.textContent=visible?"Hide":"Show";showPassword.title=visible?"Hide password":"Show password";});
+loginButton.addEventListener("click",async()=>{const email=emailInput.value.trim();const password=passwordInput.value;if(!email||!password){alert("Please enter email and password.");return;}loginButton.disabled=true;loginButton.textContent="Signing you in...";try{const response=await fetch("/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await response.json();if(data.success){window.location.replace("/index.html");}else{alert(data.message||"Login failed.");}}catch(error){console.error("Login Error:",error);alert("Unable to connect to Curio server.");}finally{loginButton.disabled=false;loginButton.textContent="Log In";}});
+passwordInput.addEventListener("keydown",e=>{if(e.key==="Enter")loginButton.click();});
+emailInput.addEventListener("keydown",e=>{if(e.key==="Enter")passwordInput.focus();});
 </script>
-
-</body>
-</html>
+</body></html>
